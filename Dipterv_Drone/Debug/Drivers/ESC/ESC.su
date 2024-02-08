@@ -1,0 +1,6 @@
+../Drivers/ESC/ESC.c:19:6:set_duty_Oneshot42	24	static
+../Drivers/ESC/ESC.c:27:7:CRSFtoDuty	24	static
+../Drivers/ESC/ESC.c:33:7:CRSFtoPitch	24	static
+../Drivers/ESC/ESC.c:39:7:CRSFtoRoll	24	static
+../Drivers/ESC/ESC.c:45:7:CRSFtoYaw	24	static
+../Drivers/ESC/ESC.c:51:6:motor_speed_calc	48	static

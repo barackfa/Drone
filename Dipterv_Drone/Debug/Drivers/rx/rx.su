@@ -1,0 +1,13 @@
+../Drivers/rx/rx.c:30:6:rxInit	4	static
+../Drivers/rx/rx.c:35:6:setRssiDirect	16	static
+../Drivers/rx/rx.c:46:17:updateRssiSamples	16	static
+../Drivers/rx/rx.c:59:6:setRssi	16	static
+../Drivers/rx/rx.c:75:10:getRssi	16	static
+../Drivers/rx/rx.c:89:9:getRssiPercent	16	static
+../Drivers/rx/rx.c:94:6:isRssiConfigured	4	static
+../Drivers/rx/rx.c:121:13:setLinkQuality	16	static
+../Drivers/rx/rx.c:149:6:setLinkQualityDirect	16	static
+../Drivers/rx/rx.c:179:9:getRssiDbm	4	static
+../Drivers/rx/rx.c:186:16:updateRssiDbmSamples	16	static
+../Drivers/rx/rx.c:198:6:setRssiDbm	16	static
+../Drivers/rx/rx.c:207:6:setRssiDbmDirect	16	static

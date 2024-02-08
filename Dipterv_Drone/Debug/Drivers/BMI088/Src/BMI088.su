@@ -1,0 +1,11 @@
+../Drivers/BMI088/Src/BMI088.c:8:9:BMI088_Init	32	static
+../Drivers/BMI088/Src/BMI088.c:160:9:BMI088_ReadAccRegister	40	static
+../Drivers/BMI088/Src/BMI088.c:179:9:BMI088_ReadGyrRegister	40	static
+../Drivers/BMI088/Src/BMI088.c:205:9:BMI088_WriteAccRegister	24	static
+../Drivers/BMI088/Src/BMI088.c:218:9:BMI088_WriteGyrRegister	24	static
+../Drivers/BMI088/Src/BMI088.c:238:9:BMI088_ReadAccelerometer	48	static
+../Drivers/BMI088/Src/BMI088.c:262:9:BMI088_ReadGyroscope	48	static
+../Drivers/BMI088/Src/BMI088.c:293:9:BMI088_ReadAccelerometerDMA	16	static
+../Drivers/BMI088/Src/BMI088.c:310:6:BMI088_ReadAccelerometerDMA_Complete	24	static
+../Drivers/BMI088/Src/BMI088.c:327:9:BMI088_ReadGyroscopeDMA	16	static
+../Drivers/BMI088/Src/BMI088.c:344:6:BMI088_ReadGyroscopeDMA_Complete	24	static
