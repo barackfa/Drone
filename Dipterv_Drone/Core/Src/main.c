@@ -150,6 +150,7 @@ float telem_D = 0;
 uint8_t new_P = 0;
 uint8_t new_D = 0;
 
+
 //order flags
 uint8_t readstart = 1;
 uint8_t oricalc = 0;
@@ -202,6 +203,9 @@ uint16_t RX_arm = 0;
 
 float M_throttle, M_pitch, M_roll, M_yaw;
 float debug_control1, debug_control2;
+
+QueueHandle_t telemetria_Queue;
+
 
 /* USER CODE END PV */
 
@@ -312,16 +316,17 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  telemetria_Queue = xQueueCreate( 3, 3*sizeof( float ) );
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 500);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  vTaskSuspend( defaultTaskHandle );
 
   /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 300);
+  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 500);
   Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
 
   /* definition and creation of Orientation_cal */
@@ -1349,7 +1354,9 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN 5 */
 	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
 	uint8_t telemetria[8];
-
+	uint8_t telemetria_data[20] = "HELLO WORLD \r\n";
+	extern QueueHandle_t telemetria_Queue;
+	float drone_angle[3];
 
 
   /* Infinite loop */
@@ -1365,7 +1372,16 @@ void StartDefaultTask(void const * argument)
 			  new_D = 1;
 		  }
 	  }
-	  osDelay(2000);
+	  if (xQueueReceive(telemetria_Queue, (void*)&drone_angle, 0) == pdTRUE){
+		  sprintf((char*)telemetria_data, "Yaw: %4.2f\r\n", drone_angle[0]); //%5.2f
+//		  sprintf((char*)telemetria_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)((drone_angle[0])*10), (int)((drone_angle[1])*10), (int)(drone_angle[2])*10); //%5.2f
+	//	  sprintf((char*)telemetria_data, "Yaw: 115.47\r\n");
+		  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 200);
+
+	  }
+
+
+	  osDelay(500);
   }
   /* USER CODE END 5 */
 }
@@ -1380,6 +1396,7 @@ void StartDefaultTask(void const * argument)
 void Start_Data_Reading(void const * argument)
 {
   /* USER CODE BEGIN Start_Data_Reading */
+	extern QueueHandle_t telemetria_Queue;
 
 	//magnetometer calibration
 	FusionVector magneto_offset = {-11.31, -3.64, 0.43};//{-11.8, -5.68, 3.08};
@@ -1423,16 +1440,20 @@ void Start_Data_Reading(void const * argument)
 	float errd_yaw = 0;
 	float prev_err_yaw = 0;
 	float control_yaw = 0;
-	float P_yaw = 10;
-	float D_yaw = 0;
+	float P_yaw = 20;
+	float D_yaw = 0.1;
 
 	//yaw angle control params
-	float P_angle_yaw = 0.04;
-	float D_angle_yaw = 0.0000;//0.005;
+	float P_angle_yaw = 0.8;//0.04;
+	float D_angle_yaw = 0.000;//0.005;
 	float err_angle_yaw = 0;
 	float errd_angle_yaw = 0;
 	float prev_err_angle_yaw = 0;
 	float angle_control_yaw = 0;
+
+	float yaw_angle = 0;
+	float prev_euler_yaw = 0;
+	int n = 0;
 
 
 
@@ -1446,7 +1467,7 @@ void Start_Data_Reading(void const * argument)
 
 	BMP388_SetTempOS(&bmp, 0);
 	HAL_Delay(10);
-	BMP388_SetPressOS(&bmp, 0);
+	BMP388_SetPressOS(&bmp, 0x03); //0 volt, de adatlap alapján 8x-nek megfelelő 0x03 beírva
 	HAL_Delay(10);
 	BMP388_SetIIRFilterCoeff(&bmp, 2);
 	HAL_Delay(10);
@@ -1475,6 +1496,9 @@ void Start_Data_Reading(void const * argument)
 	BMM150_Init(&bmm);
 	HAL_Delay(10);
 	BMM150_Get_TrimData(&bmm, &trim_data);
+
+	uint8_t transmit_data[20];
+	float telemetria_float[3];
 
 
 
@@ -1528,8 +1552,8 @@ void Start_Data_Reading(void const * argument)
 	HAL_UART_Receive_DMA(&huart1, UART1_rxBuffer, bytetoread);
 	HAL_UART_Receive_IT(&huart2, telem, 11);
 
-	uint8_t transmit_data[80] = "HELLO WORLD \r\n";
 
+	vTaskResume( defaultTaskHandle );
 
   /* Infinite loop */
   for(;;)
@@ -1591,40 +1615,52 @@ void Start_Data_Reading(void const * argument)
 		  const FusionVector magnetometer = {magneto_data.axis.x, magneto_data.axis.y, magneto_data.axis.z};
 
 
+		  //no magnetometer AHRS
+		  FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, SAMPLE_PERIOD);
 
-		  //FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, SAMPLE_PERIOD);
-		  FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, SAMPLE_PERIOD);
+		  //magnetometer AHRS
+//		  FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, SAMPLE_PERIOD);
+
 		  euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
 		  // Rotation matrix from sensor frame to earth(NWU) frame
 		  ERS = FusionQuaternionToMatrix(FusionAhrsGetQuaternion(&ahrs));
 		  aE = FusionMatrixMultiplyVector(ERS, FusionVectorMultiplyScalar(accelerometer, 9.81));
 		  aE.axis.z -=9.85173;
 
+
+
 		  // calculate rotation around yaw axis
-//		  yaw = euler.angle.yaw + 180; //convert yaw value to 0° - 360° interval
-//		  if(prev_yaw > 350 && yaw < 10){
-//			  yaw_offset += 180;
-//		  }
-//		  if(prev_yaw < 10 && prev_yaw > 350){
-//			  yaw_offset -= 180;
-//		  }
-//		  abs_yaw = yaw + yaw_offset;
+		  if(prev_euler_yaw > 170 && euler.angle.yaw < 0){
+			  n++;
+		  }
+		  if(prev_euler_yaw < -170 && euler.angle.yaw > 0){
+			  n--;
+		  }
+		  yaw_angle = euler.angle.yaw + n * 360.0;
+		  abs_yaw = yaw_angle;
+		  prev_euler_yaw = euler.angle.yaw;
 
 
 		  //python
 //		  sprintf((char*)transmit_data, "Uni:0,0,0,0,0,0,%5.2f,%5.2f,%5.2f\r\n", mag_data_y, (-mag_data_x), mag_data_z); //%5.2f
 //		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
 //		  HAL_Delay(1);
-		  //motioncal
-		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
-		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
 
+		  //motioncal
+//		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
+//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
+
+		  //telemetria
+		  telemetria_float[0] = M_yaw;
+		  telemetria_float[1] = euler.angle.yaw;
+		  telemetria_float[2] = euler.angle.roll;
+		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 		  //altitudeKF(prev_state, &current_state, P_prev, &P, meas);
 		  M_throttle = CRSFtoDuty(RX_throttle);
 		  M_pitch = CRSFtoPitch(RX_pitch)*25;
 		  M_roll = CRSFtoRoll(RX_roll)*15;
-		  M_yaw = CRSFtoYaw(RX_yaw)*0.5;
+		  M_yaw += CRSFtoYaw(RX_yaw)*0.3;
 
 		  //pitch angle control
 		  err_angle_pitch = M_pitch - euler.angle.pitch;
@@ -1664,7 +1700,7 @@ void Start_Data_Reading(void const * argument)
 
 
 		  //yaw angle velocity control
-		  err_yaw = M_yaw - imu.gyr_rps[2]; //angle_control_yaw
+		  err_yaw = angle_control_yaw - imu.gyr_rps[2]; //angle_control_yaw
 		  errd_yaw = (err_yaw - prev_err_yaw)/SAMPLE_PERIOD;
 		  prev_err_yaw = err_yaw;
 		  control_yaw = P_yaw * err_yaw + D_yaw * errd_yaw;
@@ -1727,8 +1763,8 @@ void Start_Data_Reading(void const * argument)
 
 		  //set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
-//	osDelay(3);
-	osDelay(48);
+	osDelay(3);
+//	osDelay(48);
   }
   /* USER CODE END Start_Data_Reading */
 }

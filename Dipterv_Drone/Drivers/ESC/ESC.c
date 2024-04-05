@@ -26,7 +26,8 @@ void set_duty_Oneshot42(TIM_HandleTypeDef* const pwmHandle1, uint16_t ref_1, uin
 
 float CRSFtoDuty(uint16_t CRSF_val){
 	float Duty;
-	Duty = 550+((float)(CRSF_val-172))/4.1; // minimum duty 55% max duty 95%
+//	Duty = 550+((float)(CRSF_val-172))/4.1; // minimum duty 55% max duty 95%
+	Duty = 550+((float)(CRSF_val-172))/4.1*0.6; //for safety reasons minimum duty 55% max duty 79%
 	return Duty;
 }
 
