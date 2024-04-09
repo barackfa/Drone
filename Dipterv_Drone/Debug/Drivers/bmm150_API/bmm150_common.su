@@ -1,0 +1,9 @@
+../Drivers/bmm150_API/bmm150_common.c:30:8:bmm150_user_i2c_init	8	static
+../Drivers/bmm150_API/bmm150_common.c:43:8:bmm150_user_spi_init	4	static
+../Drivers/bmm150_API/bmm150_common.c:53:6:bmm150_user_delay_us	16	static
+../Drivers/bmm150_API/bmm150_common.c:62:8:bmm150_user_i2c_reg_write	40	static
+../Drivers/bmm150_API/bmm150_common.c:74:8:bmm150_user_i2c_reg_read	40	static
+../Drivers/bmm150_API/bmm150_common.c:86:8:bmm150_user_spi_reg_write	24	static
+../Drivers/bmm150_API/bmm150_common.c:95:8:bmm150_user_spi_reg_read	24	static
+../Drivers/bmm150_API/bmm150_common.c:104:8:bmm150_interface_selection	24	static
+../Drivers/bmm150_API/bmm150_common.c:152:6:bmm150_error_codes_print_result	16	static

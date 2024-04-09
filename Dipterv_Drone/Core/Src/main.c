@@ -89,8 +89,8 @@ osThreadId Orientation_calHandle;
 
 BMI088 imu;
 BMP388_HandleTypeDef bmp;
-BMM150 bmm;
-BMM150_trim_data trim_data;
+//BMM150 bmm;
+//BMM150_trim_data trim_data;
 int16_t field_x;
 int16_t field_y;
 int16_t field_z;
@@ -1373,11 +1373,11 @@ void StartDefaultTask(void const * argument)
 		  }
 	  }
 	  if (xQueueReceive(telemetria_Queue, (void*)&drone_angle, 0) == pdTRUE){
-		  sprintf((char*)telemetria_data, "Yaw: %4.2f\r\n", drone_angle[0]); //%5.2f
+		  /*sprintf((char*)telemetria_data, "Yaw: %4.2f\r\n", drone_angle[0]); //%5.2f
 //		  sprintf((char*)telemetria_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)((drone_angle[0])*10), (int)((drone_angle[1])*10), (int)(drone_angle[2])*10); //%5.2f
 	//	  sprintf((char*)telemetria_data, "Yaw: 115.47\r\n");
 		  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 200);
-
+*/
 	  }
 
 
@@ -1399,8 +1399,12 @@ void Start_Data_Reading(void const * argument)
 	extern QueueHandle_t telemetria_Queue;
 
 	//magnetometer calibration
-	FusionVector magneto_offset = {-11.31, -3.64, 0.43};//{-11.8, -5.68, 3.08};
-	FusionMatrix magneto_transform = {1.015, 0.018, -0.002, 0.018, 1.015, -0.004, -0.002, -0.004, 0.972};
+
+//	FusionVector magneto_offset = {1.96, -8.81, -29.41};//{-11.8, -5.68, 3.08};
+//	FusionMatrix magneto_transform = {1.051, 0.027, 0.032, 0.027, 1.025, -0.028, 0.032, -0.028, 0.931};
+
+	FusionVector magneto_offset = {0, 0, 0};//{-11.8, -5.68, 3.08};
+	FusionMatrix magneto_transform = {1,0,0,0,1,0,0,0,1};
 	FusionVector magneto_data;
 
 	//pitch angle velocity control params
@@ -1491,13 +1495,13 @@ void Start_Data_Reading(void const * argument)
 	gyro_offset_z = gyro_offset_z_calc/2000;
 
 	//magneto sensor init
-	bmm.hi2c_handle = &hi2c1;
+//	bmm.hi2c_handle = &hi2c1;
+//
+//	BMM150_Init(&bmm);
+//	HAL_Delay(10);
+//	BMM150_Get_TrimData(&bmm, &trim_data);
 
-	BMM150_Init(&bmm);
-	HAL_Delay(10);
-	BMM150_Get_TrimData(&bmm, &trim_data);
-
-	uint8_t transmit_data[20];
+	uint8_t transmit_data[40];
 	float telemetria_float[3];
 
 
@@ -1561,18 +1565,18 @@ void Start_Data_Reading(void const * argument)
 
 	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
 	  	  htim7.Instance->CNT = 0;
-	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
+//	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
 
 		  // opmode start a measurement, because of the set preset mode, the results will be available in the next loop,
 		  // with nXY = 5, nZ = 6 delay is -> 4.16 ms ~240Hz -> 200 Hz control loop available
-		  BMM150_GetRawData(&bmm, &field_x, &field_y, &field_z, &Rhall, 8); // all time 1.31 ms magnetometer i2c 100kHz, 330 us with 400 kHz
+//		  BMM150_GetRawData(&bmm, &field_x, &field_y, &field_z, &Rhall, 8); // all time 1.31 ms magnetometer i2c 100kHz, 330 us with 400 kHz
 
 
 
 		  // magnetic field data in uT
-		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
-		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
-		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
+//		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
+//		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
+//		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
 		  magneto_data.axis.x = mag_data_y;
 		  magneto_data.axis.y = -mag_data_x;
 		  magneto_data.axis.z = mag_data_z;
@@ -1616,10 +1620,10 @@ void Start_Data_Reading(void const * argument)
 
 
 		  //no magnetometer AHRS
-		  FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, SAMPLE_PERIOD);
+//		  FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, SAMPLE_PERIOD);
 
 		  //magnetometer AHRS
-//		  FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, SAMPLE_PERIOD);
+		  FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, SAMPLE_PERIOD);
 
 		  euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
 		  // Rotation matrix from sensor frame to earth(NWU) frame
@@ -1647,8 +1651,8 @@ void Start_Data_Reading(void const * argument)
 //		  HAL_Delay(1);
 
 		  //motioncal
-//		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
-//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
+		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
+		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 500);
 
 		  //telemetria
 		  telemetria_float[0] = M_yaw;
@@ -1761,10 +1765,10 @@ void Start_Data_Reading(void const * argument)
 
 
 
-		  //set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
+//		  set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
-	osDelay(3);
-//	osDelay(48);
+//	osDelay(3);
+	osDelay(48);
   }
   /* USER CODE END Start_Data_Reading */
 }

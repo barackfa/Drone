@@ -37,6 +37,7 @@ HAL_StatusTypeDef    BMM150_Init(BMM150 *bmm){
 	HAL_Delay(10);
 	BMM150_Get_TrimData(bmm, &trim_debug);
 	HAL_Delay(10);
+	/*
 //	0x4C reg bit <1:2> advanced self test, bit <3:5> data rate, bit <6:7> opmode, bit <8> normal self test
 //	1. set sleep mode, opmode 11 is sleep
 	BMM150_Set_OpMode(bmm, 0x06);
@@ -77,7 +78,7 @@ HAL_StatusTypeDef    BMM150_Init(BMM150 *bmm){
 	rslt = BMM150_WriteByte(bmm, 0x4C, 0x06);
 //	calculate difference between the two compensated field values, result should be around 200 uT
 //	perform soft-reset
-
+*/
 
 	HAL_Delay(10);
 	BMM150_SoftReset(bmm);
@@ -153,17 +154,34 @@ HAL_StatusTypeDef    BMM150_Set_ODR(BMM150 *bmm, uint8_t odr){
 HAL_StatusTypeDef    BMM150_GetRawData(BMM150 *bmm, int16_t *field_x, int16_t *field_y, int16_t *field_z, uint16_t *Rhall, uint8_t len){
 	HAL_StatusTypeDef rslt;
 	uint8_t raw_field_data[8];
+	int16_t msb_data;
+	uint8_t lsb_data;
 	rslt = BMM150_ReadMultiBytes(bmm, 0x42,  &raw_field_data, len);
 //	*field_x = (int16_t)((raw_field_data[1] << 5) + (raw_field_data[0] >> 3));
 //	*field_y = (int16_t)((raw_field_data[3] << 5) + (raw_field_data[2] >> 3));
 //	*field_z = (int16_t)((raw_field_data[5] << 7) + (raw_field_data[4] >> 1));
+	msb_data = (int16_t)((int8_t)raw_field_data[1]) * 32;
+	lsb_data = (raw_field_data[0] & 0b11111000) >> 3;
+	*field_x = (int16_t)(msb_data | lsb_data);
+
+	msb_data = (int16_t)((int8_t)raw_field_data[3]) * 32;
+	lsb_data = (raw_field_data[2] & 0b11111000) >> 3;
+	*field_y = (int16_t)(msb_data | lsb_data);
+
+	msb_data = (int16_t)((int8_t)raw_field_data[5]) * 128;
+	lsb_data = (raw_field_data[4] & 0b11111110) >> 1;
+	*field_z = (int16_t)(msb_data | lsb_data);
+
+	lsb_data = (raw_field_data[6] & 0b11111100) >> 2;
+	*Rhall = (uint16_t)((((uint16_t)raw_field_data[7]) << 6) | lsb_data);
+	/*
 	*field_x = (int16_t)((raw_field_data[1] << 8) + (raw_field_data[0] ));
 	*field_x = *field_x/8;
 	*field_y = (int16_t)((raw_field_data[3] << 8) + (raw_field_data[2] ));
 	*field_y = *field_y/8;
 	*field_z = (int16_t)((raw_field_data[5] << 8) + (raw_field_data[4] ));
 	*field_z = *field_z/2;
-	*Rhall = (uint16_t)((raw_field_data[7] << 6) + (raw_field_data[6] >> 2));
+	*Rhall = (uint16_t)((raw_field_data[7] << 6) + (raw_field_data[6] >> 2));*/
 	return rslt;
 }
 
@@ -171,50 +189,57 @@ HAL_StatusTypeDef    BMM150_Get_TrimData(BMM150 *bmm, BMM150_trim_data *trim){
 	HAL_StatusTypeDef rslt;
 	uint8_t readout1;
 	uint8_t readout2;
+	uint16_t temp_msb = 0;
+
 	//dig_x1
 	rslt = BMM150_ReadByte(bmm, 0x5D,  &readout1);
-	trim->dig_x1 = readout1;
+	trim->dig_x1 = (int8_t)readout1;
 	HAL_Delay(2);
 	//dig_y1
 	rslt = BMM150_ReadByte(bmm, 0x5E,  &readout1);
-	trim->dig_y1 = readout1;
+	trim->dig_y1 = (int8_t)readout1;
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x64,  &readout1);
-	trim->dig_x2 = readout1;
+	trim->dig_x2 = (int8_t)readout1;
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x65,  &readout1);
-	trim->dig_y2 = readout1;
+	trim->dig_y2 = (int8_t)readout1;
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x71,  &readout1);
 	trim->dig_xy1 = readout1;
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x70,  &readout1);
-	trim->dig_xy2 = readout1;
+	trim->dig_xy2 = (int8_t)readout1;
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x6A,  &readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x6B,  &readout2);
-	trim->dig_z1 = (readout2 << 8) | readout1;
+	temp_msb = ((uint16_t)readout2) << 8;
+	trim->dig_z1 = (uint16_t)(temp_msb | readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x68,  &readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x69,  &readout2);
-	trim->dig_z2 = (readout2 << 8) | readout1;
+	temp_msb = ((uint16_t)readout2) << 8;
+	trim->dig_z2 = (int16_t)(temp_msb | readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x6E,  &readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x6F,  &readout2);
-	trim->dig_z3 = (readout2 << 8) | readout1;
+	temp_msb = ((uint16_t)readout2) << 8;
+	trim->dig_z3 = (int16_t)(temp_msb | readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x62,  &readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x63,  &readout2);
-	trim->dig_z4 = (readout2 << 8) | readout1;
+	temp_msb = ((uint16_t)readout2) << 8;
+	trim->dig_z4 = (int16_t)(temp_msb | readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x6C,  &readout1);
 	HAL_Delay(2);
 	rslt = BMM150_ReadByte(bmm, 0x6D,  &readout2);
-	trim->dig_xyz1 = (readout2 << 8) | readout1;
+	temp_msb = ((uint16_t)readout2) << 8;
+	trim->dig_xyz1 = (uint16_t)(temp_msb | readout1);
 
 	return rslt;
 }
@@ -268,6 +293,37 @@ float    BMM150_Compensate_x(int16_t raw_mag_data_x, uint16_t raw_data_r,  BMM15
 	return compensated_X;
 }
 
+//float    BMM150_Compensate_x(int16_t raw_mag_data_x, uint16_t raw_data_r,  BMM150_trim_data *trim){
+//	float retval = 0;
+//	float process_comp_x0;
+//	float process_comp_x1;
+//	float process_comp_x2;
+//	float process_comp_x3;
+//	float process_comp_x4;
+//
+//	if (raw_mag_data_x != (-4096)) {
+//		if ((raw_data_r != 0) && (trim->dig_xyz1 != 0)) {
+//			retval = ((((float)trim->dig_xyz1)*16384.0/(float)raw_data_r) - 16384.0);
+//		}
+//		else {
+//			retval = 0.0f;
+//			return retval;
+//		}
+//		process_comp_x0 = (((float)trim->dig_xyz1) * 16384.0f / raw_data_r);
+//		retval = (process_comp_x0 - 16384.0f);
+//		process_comp_x1 = ((float)trim->dig_xy2) * (retval * retval / 268435456.0f);
+//		process_comp_x2 = process_comp_x1 + retval * ((float)trim->dig_xy1) / 16384.0f;
+//		process_comp_x3 = ((float)trim->dig_x2) + 160.0f;
+//		process_comp_x4 = raw_mag_data_x * ((process_comp_x2 + 256.0f) * process_comp_x3);
+//		retval = ((process_comp_x4 / 8192.0f) + (((float)trim->dig_x1) * 8.0f)) / 16.0f;
+//	}
+//	else {
+//		retval = 0.0f;
+//	}
+//	return retval;
+//}
+
+
 float   BMM150_Compensate_y(int16_t raw_mag_data_y, uint16_t raw_data_r,  BMM150_trim_data *trim){
 	float compensated_Y = 0;
 
@@ -287,6 +343,40 @@ float   BMM150_Compensate_y(int16_t raw_mag_data_y, uint16_t raw_data_r,  BMM150
 	}
 	return compensated_Y;
 }
+
+//float   BMM150_Compensate_y(int16_t raw_mag_data_y, uint16_t raw_data_r,  BMM150_trim_data *trim){
+//	float retval = 0;
+//	float process_comp_y0;
+//	float process_comp_y1;
+//	float process_comp_y2;
+//	float process_comp_y3;
+//	float process_comp_y4;
+//
+//	if (raw_mag_data_y != (-4096)) {
+//		if ((raw_data_r != 0)&& (trim->dig_xyz1 != 0)) {
+//			retval = ((((float)(trim->dig_xyz1))* 16384.0/(float)raw_data_r) - 16384.0);
+//		}
+//		else {
+//			retval = 0.0f;
+//			return retval;
+//		}
+//		process_comp_y0 = ((float)trim->dig_xyz1) * 16384.0f / raw_data_r;
+//		retval = process_comp_y0 - 16384.0f;
+//		process_comp_y1 = ((float)trim->dig_xy2) * (retval * retval / 268435456.0f);
+//		process_comp_y2 = process_comp_y1 + retval * ((float)trim->dig_xy1) / 16384.0f;
+//		process_comp_y3 = ((float)trim->dig_y2) + 160.0f;
+//		process_comp_y4 = raw_mag_data_y * (((process_comp_y2) + 256.0f) * process_comp_y3);
+//		retval = ((process_comp_y4 / 8192.0f) + (((float)trim->dig_y1) * 8.0f)) / 16.0f;
+//	}
+//	else {
+//		retval = 0.0f;
+//	}
+//	return retval;
+//}
+
+
+
+
 float    BMM150_Compensate_z(int16_t raw_mag_data_z, uint16_t raw_data_r,  BMM150_trim_data *trim){
 	float compensated_Z = 0;
 	if (raw_mag_data_z != (-16384)) {
@@ -300,6 +390,34 @@ float    BMM150_Compensate_z(int16_t raw_mag_data_z, uint16_t raw_data_r,  BMM15
 	}
 	return (compensated_Z);
 }
+
+//float    BMM150_Compensate_z(int16_t raw_mag_data_z, uint16_t raw_data_r,  BMM150_trim_data *trim){
+//	float retval = 0;
+//	float process_comp_z0;
+//	float process_comp_z1;
+//	float process_comp_z2;
+//	float process_comp_z3;
+//	float process_comp_z4;
+//	float process_comp_z5;
+//
+//
+//	if (raw_mag_data_z != (-16384)) {
+//		if ((trim->dig_z2 != 0)&& (trim->dig_z1 != 0)&& (trim->dig_xyz1 != 0)&& (raw_data_r != 0)) {
+//			process_comp_z0 = ((float)raw_mag_data_z) - ((float)trim->dig_z4);
+//			process_comp_z1 = ((float)raw_data_r) - ((float)trim->dig_xyz1);
+//			process_comp_z2 = (((float)trim->dig_z3) * process_comp_z1);
+//			process_comp_z3 = ((float)trim->dig_z1) * ((float)raw_data_r) / 32768.0f;
+//			process_comp_z4 = ((float)trim->dig_z2) + process_comp_z3;
+//			process_comp_z5 = (process_comp_z0 * 131072.0f) - process_comp_z2;
+//			retval = (process_comp_z5 / ((process_comp_z4) * 4.0f)) / 16.0f;
+//		}
+//	}
+//	else {
+//		retval = 0.0f;
+//	}
+//	return (retval);
+//}
+
 
 
 

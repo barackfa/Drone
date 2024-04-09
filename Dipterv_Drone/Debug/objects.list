@@ -39,6 +39,8 @@
 "./Drivers/ahrs/FusionAhrs.o"
 "./Drivers/ahrs/FusionCompass.o"
 "./Drivers/ahrs/FusionOffset.o"
+"./Drivers/bmm150_API/bmm150.o"
+"./Drivers/bmm150_API/bmm150_common.o"
 "./Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.o"
 "./Middlewares/Third_Party/FreeRTOS/Source/croutine.o"
 "./Middlewares/Third_Party/FreeRTOS/Source/event_groups.o"

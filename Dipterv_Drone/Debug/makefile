@@ -13,6 +13,7 @@ RM := rm -rf
 -include Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/subdir.mk
+-include Drivers/bmm150_API/subdir.mk
 -include Drivers/ahrs/subdir.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Drivers/OrientationFilter/subdir.mk
@@ -73,8 +74,8 @@ all: main-build
 main-build: Dipterv_Drone.elf secondary-outputs
 
 # Tool invocations
-Dipterv_Drone.elf Dipterv_Drone.map: $(OBJS) $(USER_OBJS) C:\Users\Andris\STM32CubeIDE\workspace_1.9.0\Dipterv_Drone\STM32F405RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Dipterv_Drone.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Andris\STM32CubeIDE\workspace_1.9.0\Dipterv_Drone\STM32F405RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Dipterv_Drone.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Dipterv_Drone.elf Dipterv_Drone.map: $(OBJS) $(USER_OBJS) C:\Users\Andris\STM32CubeIDE\workspace_1.9.0\Drone\Dipterv_Drone\STM32F405RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Dipterv_Drone.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Andris\STM32CubeIDE\workspace_1.9.0\Drone\Dipterv_Drone\STM32F405RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Dipterv_Drone.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

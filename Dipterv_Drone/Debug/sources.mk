@@ -33,6 +33,7 @@ Drivers/OriIMU \
 Drivers/OrientationFilter \
 Drivers/STM32F4xx_HAL_Driver/Src \
 Drivers/ahrs \
+Drivers/bmm150_API \
 Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS \
 Middlewares/Third_Party/FreeRTOS/Source \
 Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F \
