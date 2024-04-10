@@ -34,6 +34,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "bmm150.h"
+#include "bmm150_common.h"
+#include "bmm150_defs.h"
 
 
 /* USER CODE END Includes */
@@ -70,6 +73,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
+TIM_HandleTypeDef htim10;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -229,6 +233,7 @@ static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_TIM10_Init(void);
 void StartDefaultTask(void const * argument);
 void Start_Data_Reading(void const * argument);
 void Start_Orientation(void const * argument);
@@ -239,7 +244,7 @@ void Start_Orientation(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+static int8_t set_config(struct bmm150_dev *dev);
 /* USER CODE END 0 */
 
 /**
@@ -287,6 +292,7 @@ int main(void)
   MX_ADC3_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -297,6 +303,8 @@ int main(void)
   HAL_TIM_PWM_Start  ( &htim3,  TIM_CHANNEL_2  );
   HAL_TIM_PWM_Start  ( &htim3,  TIM_CHANNEL_3  );
   HAL_TIM_PWM_Start  ( &htim3,  TIM_CHANNEL_4  );
+
+  HAL_TIM_Base_Start  ( &htim10 );
 
 
 
@@ -321,12 +329,11 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 500);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-  vTaskSuspend( defaultTaskHandle );
 
   /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 500);
+  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 300);
   Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
 
   /* definition and creation of Orientation_cal */
@@ -972,6 +979,37 @@ static void MX_TIM7_Init(void)
 }
 
 /**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+  /* USER CODE BEGIN TIM10_Init 0 */
+
+  /* USER CODE END TIM10_Init 0 */
+
+  /* USER CODE BEGIN TIM10_Init 1 */
+
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 168-1;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 65535;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
+
+  /* USER CODE END TIM10_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1206,6 +1244,41 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static int8_t set_config(struct bmm150_dev *dev) {
+    /* Status of api are returned to this variable. */
+    int8_t rslt;
+
+    struct bmm150_settings settings;
+
+    /* Set powermode as normal mode */
+    settings.pwr_mode = BMM150_POWERMODE_NORMAL;
+    rslt = bmm150_set_op_mode(&settings, dev);
+    bmm150_error_codes_print_result("bmm150_set_op_mode", rslt);
+
+    if (rslt == BMM150_OK) {
+        /* Setting the preset mode as Low power mode
+         * i.e. data rate = 10Hz, XY-rep = 1, Z-rep = 2
+         */
+        settings.preset_mode = BMM150_PRESETMODE_HIGHACCURACY;                  // TODO Change it to the desired preset
+        rslt = bmm150_set_presetmode(&settings, dev);
+        settings.data_rate = BMM150_DATA_RATE_30HZ;                             // TODO Change it to the desired ODR
+        bmm150_set_sensor_settings(BMM150_SEL_DATA_RATE, &settings, dev);
+        bmm150_error_codes_print_result("bmm150_set_presetmode", rslt);
+
+        if (rslt == BMM150_OK) {
+            /* Map the data interrupt pin */
+            settings.int_settings.drdy_pin_en = 0x01;
+            rslt = bmm150_set_sensor_settings(BMM150_SEL_DRDY_PIN_EN, &settings, dev);
+            bmm150_error_codes_print_result("bmm150_set_sensor_settings", rslt);
+        }
+    }
+
+    return rslt;
+}
+
+
+
+
 uint16_t Reverseuint16( uint16_t nonreversed )
 {
     uint16_t reversed = 0;
@@ -1501,6 +1574,42 @@ void Start_Data_Reading(void const * argument)
 //	HAL_Delay(10);
 //	BMM150_Get_TrimData(&bmm, &trim_data);
 
+
+
+
+	 //BOSCH API
+	 /* Sensor initialization configuration. */
+	struct bmm150_dev dev;
+	struct bmm150_mag_data mag_data;
+
+	/* Status of api are returned to this variable */
+	int8_t rslt;
+
+	rslt = bmm150_interface_selection(&dev);
+	bmm150_error_codes_print_result("bmm150_interface_selection", rslt);
+
+	if (rslt == BMM150_OK) {
+	        rslt = bmm150_init(&dev);
+	        bmm150_error_codes_print_result("bmm150_init", rslt);
+
+	        if (rslt == BMM150_OK) {
+	            rslt = set_config(&dev);
+	            bmm150_error_codes_print_result("set_config", rslt);
+
+	//            if (rslt == BMM150_OK) {
+	//                rslt = get_data(&dev);
+	//                bmm150_error_codes_print_result("get_data", rslt);
+	//            }
+	        }
+	    }
+
+	//BOSCH API
+
+
+
+
+
+
 	uint8_t transmit_data[40];
 	float telemetria_float[3];
 
@@ -1565,6 +1674,15 @@ void Start_Data_Reading(void const * argument)
 
 	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
 	  	  htim7.Instance->CNT = 0;
+	  	  //BOSCH API magneto begin
+	  	  bmm150_get_interrupt_status(&dev);
+	  	  if (dev.int_status & BMM150_INT_ASSERTED_DRDY) {
+	  		  /* Read mag data */
+	  		  bmm150_read_mag_data(&mag_data, &dev);
+	  	  }
+
+	  	  //BOSCH API magneto end
+
 //	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
 
 		  // opmode start a measurement, because of the set preset mode, the results will be available in the next loop,
@@ -1577,9 +1695,9 @@ void Start_Data_Reading(void const * argument)
 //		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
 //		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
 //		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
-		  magneto_data.axis.x = mag_data_y;
-		  magneto_data.axis.y = -mag_data_x;
-		  magneto_data.axis.z = mag_data_z;
+		  magneto_data.axis.x = mag_data.y;
+		  magneto_data.axis.y = mag_data.x;
+		  magneto_data.axis.z = mag_data.z;
 
 		  if(i_mag < 1000){
 			  mag_debug_x[i_mag] = mag_data_x;
