@@ -1769,8 +1769,8 @@ void Start_Data_Reading(void const * argument)
 //		  HAL_Delay(1);
 
 		  //motioncal
-		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
-		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 500);
+//		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
+//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 500);
 
 		  //telemetria
 		  telemetria_float[0] = M_yaw;
@@ -1885,8 +1885,8 @@ void Start_Data_Reading(void const * argument)
 
 //		  set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
-//	osDelay(3);
-	osDelay(48);
+	osDelay(3);
+//	osDelay(48);
   }
   /* USER CODE END Start_Data_Reading */
 }
