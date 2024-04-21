@@ -25,7 +25,7 @@
 #include "stm32f4xx_hal.h"
 #include "BMI088.h"
 #include "BMP388.h"
-#include "BMM150.h"
+//#include "BMM150.h"
 #include "ESC.h"
 #include "Orifilter.h"
 #include "oriIMU.h"
@@ -89,8 +89,8 @@ osThreadId Orientation_calHandle;
 
 BMI088 imu;
 BMP388_HandleTypeDef bmp;
-BMM150 bmm;
-BMM150_trim_data trim_data;
+//BMM150 bmm;
+//BMM150_trim_data trim_data;
 int16_t field_x;
 int16_t field_y;
 int16_t field_z;
@@ -145,6 +145,7 @@ uint8_t Distance  = 0;
 //telemetria
 uint8_t telem[8] = {15};
 uint8_t uart_telemetria = 0;
+uint8_t telemetria_data_sent = 0;
 float telem_P = 0;
 float telem_D = 0;
 uint8_t new_P = 0;
@@ -316,7 +317,7 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  telemetria_Queue = xQueueCreate( 3, 3*sizeof( float ) );
+  telemetria_Queue = xQueueCreate( 13, 13*sizeof( float ) );
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -326,7 +327,7 @@ int main(void)
   vTaskSuspend( defaultTaskHandle );
 
   /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 500);
+  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 600);
   Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
 
   /* definition and creation of Orientation_cal */
@@ -1310,6 +1311,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   }
 }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart == &huart2){
+			telemetria_data_sent = 1;
+	}
+}
+
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart ==&huart1){
@@ -1332,11 +1342,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		htim6.Instance->CNT = 0;
 	}
 	if(huart == &huart2){
-		if(uart_telemetria == 1){
-			HAL_UART_Receive_IT(&huart2, telem, 11);
-		}
-		else
-			HAL_UART_Receive_IT(&huart2, telem, 11);
+		telemetria_data_sent = 1;
+//		if(uart_telemetria == 1){
+//			HAL_UART_Receive_IT(&huart2, telem, 11);
+//		}
+//		else
+//			HAL_UART_Receive_IT(&huart2, telem, 11);
 	}
 }
 
@@ -1354,9 +1365,9 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN 5 */
 	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
 	uint8_t telemetria[8];
-	uint8_t telemetria_data[20] = "HELLO WORLD \r\n";
+	uint8_t telemetria_data[100] = "HELLO WORLD \r\n";
 	extern QueueHandle_t telemetria_Queue;
-	float drone_angle[3];
+	float telemetria_send[13];
 
 
   /* Infinite loop */
@@ -1372,16 +1383,29 @@ void StartDefaultTask(void const * argument)
 			  new_D = 1;
 		  }
 	  }
-	  if (xQueueReceive(telemetria_Queue, (void*)&drone_angle, 0) == pdTRUE){
-		  sprintf((char*)telemetria_data, "Yaw: %4.2f\r\n", drone_angle[0]); //%5.2f
+	  if (xQueueReceive(telemetria_Queue, (void*)&telemetria_send, 0) == pdTRUE){
+//		  sprintf((char*)telemetria_data, "%2.4f, %2.4f, %2.4f, %3.3f, %3.3f, %3.3f, %4.2f, %4.2f, %4.2f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12]); //%5.2f
 //		  sprintf((char*)telemetria_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)((drone_angle[0])*10), (int)((drone_angle[1])*10), (int)(drone_angle[2])*10); //%5.2f
 	//	  sprintf((char*)telemetria_data, "Yaw: 115.47\r\n");
-		  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 200);
 
+//		  for(int i_telem_send = 0; i_telem_send < 13 ;i_telem_send++){
+//			  if(i_telem_send == 12 ){
+//				  sprintf((char*)telemetria_data, "%4.4f, ", telemetria_send[i_telem_send]);
+//			  }
+//			  else{
+//				  sprintf((char*)telemetria_data, "%4.4f\r\n", telemetria_send[i_telem_send]);
+//			  }
+//			  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 400);
+//		  }
+		  if(telemetria_data_sent == 1){
+			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12]); //%5.2f
+			  HAL_UART_Transmit_IT(&huart2, telemetria_data, sizeof (telemetria_data));
+			  telemetria_data_sent = 0;
+		  }
 	  }
 
 
-	  osDelay(500);
+	  osDelay(10);
   }
   /* USER CODE END 5 */
 }
@@ -1491,13 +1515,13 @@ void Start_Data_Reading(void const * argument)
 	gyro_offset_z = gyro_offset_z_calc/2000;
 
 	//magneto sensor init
-	bmm.hi2c_handle = &hi2c1;
+//	bmm.hi2c_handle = &hi2c1;
 
-	BMM150_Init(&bmm);
-	HAL_Delay(10);
-	BMM150_Get_TrimData(&bmm, &trim_data);
+//	BMM150_Init(&bmm);
+//	HAL_Delay(10);
+//	BMM150_Get_TrimData(&bmm, &trim_data);
 
-	uint8_t transmit_data[20];
+	uint8_t transmit_data[60] = "Hello Andris\r\n";
 	float telemetria_float[3];
 
 
@@ -1550,7 +1574,8 @@ void Start_Data_Reading(void const * argument)
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 
 	HAL_UART_Receive_DMA(&huart1, UART1_rxBuffer, bytetoread);
-	HAL_UART_Receive_IT(&huart2, telem, 11);
+	HAL_UART_Transmit_IT(&huart2, transmit_data, sizeof (transmit_data));
+//	HAL_UART_Receive_IT(&huart2, telem, 11);
 
 
 	vTaskResume( defaultTaskHandle );
@@ -1561,18 +1586,18 @@ void Start_Data_Reading(void const * argument)
 
 	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
 	  	  htim7.Instance->CNT = 0;
-	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
+//	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
 
 		  // opmode start a measurement, because of the set preset mode, the results will be available in the next loop,
 		  // with nXY = 5, nZ = 6 delay is -> 4.16 ms ~240Hz -> 200 Hz control loop available
-		  BMM150_GetRawData(&bmm, &field_x, &field_y, &field_z, &Rhall, 8); // all time 1.31 ms magnetometer i2c 100kHz, 330 us with 400 kHz
+//		  BMM150_GetRawData(&bmm, &field_x, &field_y, &field_z, &Rhall, 8); // all time 1.31 ms magnetometer i2c 100kHz, 330 us with 400 kHz
 
 
 
 		  // magnetic field data in uT
-		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
-		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
-		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
+//		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
+//		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
+//		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
 		  magneto_data.axis.x = mag_data_y;
 		  magneto_data.axis.y = -mag_data_x;
 		  magneto_data.axis.z = mag_data_z;
@@ -1650,11 +1675,8 @@ void Start_Data_Reading(void const * argument)
 //		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
 //		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
 
-		  //telemetria
-		  telemetria_float[0] = M_yaw;
-		  telemetria_float[1] = euler.angle.yaw;
-		  telemetria_float[2] = euler.angle.roll;
-		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
+
+
 
 		  //altitudeKF(prev_state, &current_state, P_prev, &P, meas);
 		  M_throttle = CRSFtoDuty(RX_throttle);
@@ -1692,7 +1714,8 @@ void Start_Data_Reading(void const * argument)
 
 
 		  //yaw angle control
-		  err_angle_yaw = M_yaw - euler.angle.yaw;
+//		  err_angle_yaw = M_yaw - euler.angle.yaw;
+		  err_angle_yaw = M_yaw - yaw_angle;
 		  errd_angle_yaw = (err_angle_yaw - prev_err_angle_yaw)/SAMPLE_PERIOD;
 		  angle_control_yaw = P_angle_yaw * err_angle_yaw + D_angle_yaw * errd_angle_yaw;
 		  prev_err_angle_yaw = err_angle_yaw;
@@ -1722,15 +1745,32 @@ void Start_Data_Reading(void const * argument)
 //			  ref4 = (uint16_t)(M_throttle + control_roll);
 
 			  //yaw
-			  ref1 = (uint16_t)(M_throttle - control_yaw);
-			  ref2 = (uint16_t)(M_throttle + control_yaw);
-			  ref3 = (uint16_t)(M_throttle - control_yaw);
-			  ref4 = (uint16_t)(M_throttle + control_yaw);
+//			  ref1 = (uint16_t)(M_throttle - control_yaw);
+//			  ref2 = (uint16_t)(M_throttle + control_yaw);
+//			  ref3 = (uint16_t)(M_throttle - control_yaw);
+//			  ref4 = (uint16_t)(M_throttle + control_yaw);
+
+			  //all together
+			  ref1 = (uint16_t)(M_throttle - control_yaw - control_pitch + control_roll);
+			  ref2 = (uint16_t)(M_throttle + control_yaw - control_pitch - control_roll);
+			  ref3 = (uint16_t)(M_throttle - control_yaw + control_pitch - control_roll);
+			  ref4 = (uint16_t)(M_throttle + control_yaw + control_pitch + control_roll);
+
+//			  ref1 = (uint16_t)(M_throttle - control_pitch + control_roll);
+//			  ref2 = (uint16_t)(M_throttle - control_pitch - control_roll);
+//			  ref3 = (uint16_t)(M_throttle + control_pitch - control_roll);
+//			  ref4 = (uint16_t)(M_throttle + control_pitch + control_roll);
 
 			  if(ref1<550) ref1 = 550;
 			  if(ref2<550) ref2 = 550;
 			  if(ref3<550) ref3 = 550;
 			  if(ref4<550) ref4 = 550;
+
+			  if(ref1>950) ref1 = 950;
+			  if(ref2>950) ref2 = 950;
+			  if(ref3>950) ref3 = 950;
+			  if(ref4>950) ref4 = 950;
+
 //			  if(gyro_i<500){
 //				  gyro_debug[gyro_i] = imu.gyr_rps[1];
 //				  gyro_i++;
@@ -1751,12 +1791,31 @@ void Start_Data_Reading(void const * argument)
 				  D_yaw = telem_D;
 				  new_D = 0;
 			  }
+			  // yaw angle reference set to the AHRS calculated yaw angle, this is to prevent the angle offset during arm switch off state
+			  M_yaw = yaw_angle;
+
 			  ref1 = 550;
 			  ref2 = 550;
 			  ref3 = 550;
 			  ref4 = 550;
 		  }
 
+
+		  //telemetria
+		  telemetria_float[0] = accelerometer.axis.x;
+		  telemetria_float[1] = accelerometer.axis.y;
+		  telemetria_float[2] = accelerometer.axis.z;
+		  telemetria_float[3] = gyroscope.axis.x;
+		  telemetria_float[4] = gyroscope.axis.y;
+		  telemetria_float[5] = gyroscope.axis.z;
+		  telemetria_float[6] = euler.angle.roll;
+		  telemetria_float[7] = euler.angle.pitch;
+		  telemetria_float[8] = euler.angle.yaw;
+		  telemetria_float[9] = (float)ref1;
+		  telemetria_float[10] = (float)ref2;
+		  telemetria_float[11] = (float)ref3;
+		  telemetria_float[12] = (float)ref4;
+		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
 
