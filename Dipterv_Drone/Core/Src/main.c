@@ -317,7 +317,7 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  telemetria_Queue = xQueueCreate( 13, 13*sizeof( float ) );
+  telemetria_Queue = xQueueCreate( 19, 19*sizeof( float ) );
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -1364,10 +1364,10 @@ void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
 	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-	uint8_t telemetria[8];
-	uint8_t telemetria_data[100] = "HELLO WORLD \r\n";
+//	uint8_t telemetria[8];
+	uint8_t telemetria_data[140] = "HELLO WORLD \r\n";
 	extern QueueHandle_t telemetria_Queue;
-	float telemetria_send[13];
+	float telemetria_send[19];
 
 
   /* Infinite loop */
@@ -1398,7 +1398,8 @@ void StartDefaultTask(void const * argument)
 //			  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 400);
 //		  }
 		  if(telemetria_data_sent == 1){
-			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12]); //%5.2f
+//			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12]); //%5.2f
+			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12],telemetria_send[13], telemetria_send[14], telemetria_send[15], telemetria_send[16], telemetria_send[17], telemetria_send[18]); //%5.2f
 			  HAL_UART_Transmit_IT(&huart2, telemetria_data, sizeof (telemetria_data));
 			  telemetria_data_sent = 0;
 		  }
@@ -1522,7 +1523,7 @@ void Start_Data_Reading(void const * argument)
 //	BMM150_Get_TrimData(&bmm, &trim_data);
 
 	uint8_t transmit_data[60] = "Hello Andris\r\n";
-	float telemetria_float[3];
+	float telemetria_float[19];
 
 
 
@@ -1816,10 +1817,20 @@ void Start_Data_Reading(void const * argument)
 		  telemetria_float[6] = euler.angle.roll;
 		  telemetria_float[7] = euler.angle.pitch;
 		  telemetria_float[8] = euler.angle.yaw;
-		  telemetria_float[9] = (float)ref1;
-		  telemetria_float[10] = (float)ref2;
-		  telemetria_float[11] = (float)ref3;
-		  telemetria_float[12] = (float)ref4;
+//		  telemetria_float[9] = (float)ref1;
+//		  telemetria_float[10] = (float)ref2;
+//		  telemetria_float[11] = (float)ref3;
+//		  telemetria_float[12] = (float)ref4;
+		  telemetria_float[9] = (float)M_roll;
+		  telemetria_float[10] = (float)M_pitch;
+		  telemetria_float[11] = (float)M_yaw;
+		  telemetria_float[12] = (float)M_throttle;
+		  telemetria_float[13] = (float)angle_control_roll;
+		  telemetria_float[14] = (float)angle_control_pitch;
+		  telemetria_float[15] = (float)angle_control_yaw;
+		  telemetria_float[16] = (float)control_roll;
+		  telemetria_float[17] = (float)control_pitch;
+		  telemetria_float[18] = (float)control_yaw;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
