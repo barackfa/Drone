@@ -34,5 +34,5 @@ C:/Users/Andris/STM32CubeIDE/workspace_1.9.0/Drone/Dipterv_Drone/Drivers/ahrs/Fu
 ../Core/Src/main.c:1323:6:HAL_UART_RxCpltCallback	16	static
 ../Core/Src/main.c:1363:6:StartDefaultTask	368	static
 ../Core/Src/main.c:1420:6:Start_Data_Reading	472	static
-../Core/Src/main.c:1838:6:Start_Orientation	16	static
-../Core/Src/main.c:1863:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:1843:6:Start_Orientation	16	static
+../Core/Src/main.c:1868:6:Error_Handler	4	static,ignoring_inline_asm

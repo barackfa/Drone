@@ -1432,7 +1432,7 @@ void Start_Data_Reading(void const * argument)
 	float errd_pitch = 0;
 	float prev_err_pitch = 0;
 	float control_pitch = 0;
-	float P_pitch = 20;
+	float P_pitch = 16;//20;
 	float D_pitch = 0.1;
 
 	//pitch angle control params
@@ -1440,20 +1440,20 @@ void Start_Data_Reading(void const * argument)
 	float errd_angle_pitch = 0;
 	float prev_err_angle_pitch = 0;
 	float angle_control_pitch = 0;
-	float P_angle_pitch = 0.04;
-	float D_angle_pitch = 0.0001;//0.005;
+	float P_angle_pitch = 0.04;//0.04;
+	float D_angle_pitch = 0.0001;
 
 	//roll angle velocity control params
 	float err_roll = 0;
 	float errd_roll = 0;
 	float prev_err_roll = 0;
 	float control_roll = 0;
-	float P_roll = 5;
-	float D_roll = 0.1;//0.4
+	float P_roll = 4;//5;
+	float D_roll = 0.1;
 
 	//roll angle control params
-	float P_angle_roll = 0.2;
-	float D_angle_roll = 0.0001;//0.005;
+	float P_angle_roll = 0.2;//0.2;
+	float D_angle_roll = 0.0001;
 	float err_angle_roll = 0;
 	float errd_angle_roll = 0;
 	float prev_err_angle_roll = 0;
@@ -1468,8 +1468,8 @@ void Start_Data_Reading(void const * argument)
 	float D_yaw = 0.1;
 
 	//yaw angle control params
-	float P_angle_yaw = 0.8;//0.04;
-	float D_angle_yaw = 0.000;//0.005;
+	float P_angle_yaw = 0.8;
+	float D_angle_yaw = 0.000;
 	float err_angle_yaw = 0;
 	float errd_angle_yaw = 0;
 	float prev_err_angle_yaw = 0;
@@ -1760,6 +1760,11 @@ void Start_Data_Reading(void const * argument)
 //			  ref2 = (uint16_t)(M_throttle - control_pitch - control_roll);
 //			  ref3 = (uint16_t)(M_throttle + control_pitch - control_roll);
 //			  ref4 = (uint16_t)(M_throttle + control_pitch + control_roll);
+
+//			  ref1 = (uint16_t)(M_throttle);
+//			  ref2 = (uint16_t)(M_throttle);
+//			  ref3 = (uint16_t)(M_throttle);
+//			  ref4 = (uint16_t)(M_throttle);
 
 			  if(ref1<550) ref1 = 550;
 			  if(ref2<550) ref2 = 550;
