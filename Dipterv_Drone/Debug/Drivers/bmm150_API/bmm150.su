@@ -27,9 +27,9 @@
 ../Drivers/bmm150_API/bmm150.c:1479:15:interrupt_pin_settings	40	static
 ../Drivers/bmm150_API/bmm150.c:1537:15:interrupt_config	40	static
 ../Drivers/bmm150_API/bmm150.c:1584:15:interrupt_threshold_settings	32	static
-../Drivers/bmm150_API/bmm150.c:1720:16:compensate_x	64	static
-../Drivers/bmm150_API/bmm150.c:1787:16:compensate_y	56	static
-../Drivers/bmm150_API/bmm150.c:1852:16:compensate_z	40	static
+../Drivers/bmm150_API/bmm150.c:1614:14:compensate_x	40	static
+../Drivers/bmm150_API/bmm150.c:1648:14:compensate_y	40	static
+../Drivers/bmm150_API/bmm150.c:1682:14:compensate_z	48	static
 ../Drivers/bmm150_API/bmm150.c:1907:15:perform_normal_self_test	24	static
 ../Drivers/bmm150_API/bmm150.c:1930:15:enable_normal_self_test	24	static
 ../Drivers/bmm150_API/bmm150.c:1969:15:validate_normal_self_test	24	static

@@ -153,6 +153,7 @@ float telem_P = 0;
 float telem_D = 0;
 uint8_t new_P = 0;
 uint8_t new_D = 0;
+uint8_t telemetria_data_sent = 0;
 
 
 //order flags
@@ -329,11 +330,11 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 500);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 300);
+  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 600);
   Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
 
   /* definition and creation of Orientation_cal */
@@ -1383,6 +1384,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   }
 }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart == &huart2){
+			telemetria_data_sent = 1;
+	}
+}
+
+
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart ==&huart1){
@@ -1426,10 +1437,10 @@ void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
 	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-	uint8_t telemetria[8];
-	uint8_t telemetria_data[20] = "HELLO WORLD \r\n";
+//	uint8_t telemetria[8];
+	uint8_t telemetria_data[40] = "HELLO WORLD \r\n";
 	extern QueueHandle_t telemetria_Queue;
-	float drone_angle[3];
+	float telemetria_send[3];
 
 
   /* Infinite loop */
@@ -1445,16 +1456,23 @@ void StartDefaultTask(void const * argument)
 			  new_D = 1;
 		  }
 	  }
-	  if (xQueueReceive(telemetria_Queue, (void*)&drone_angle, 0) == pdTRUE){
+	  if (xQueueReceive(telemetria_Queue, (void*)&telemetria_send, 0) == pdTRUE){
 		  /*sprintf((char*)telemetria_data, "Yaw: %4.2f\r\n", drone_angle[0]); //%5.2f
 //		  sprintf((char*)telemetria_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)((drone_angle[0])*10), (int)((drone_angle[1])*10), (int)(drone_angle[2])*10); //%5.2f
 	//	  sprintf((char*)telemetria_data, "Yaw: 115.47\r\n");
 		  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 200);
 */
+
+		  if(telemetria_data_sent == 1){
+		  			  sprintf((char*)telemetria_data, "%4.3f,%4.3f,%4.3f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2]); //%5.2f
+//		  			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12],telemetria_send[13], telemetria_send[14], telemetria_send[15], telemetria_send[16], telemetria_send[17], telemetria_send[18]); //%5.2f
+		  			  HAL_UART_Transmit_IT(&huart2, telemetria_data, sizeof (telemetria_data));
+		  			  telemetria_data_sent = 0;
+		  		  }
 	  }
 
 
-	  osDelay(500);
+	  osDelay(10);
   }
   /* USER CODE END 5 */
 }
@@ -1472,12 +1490,17 @@ void Start_Data_Reading(void const * argument)
 	extern QueueHandle_t telemetria_Queue;
 
 	//magnetometer calibration
+	//MATLAB calibration
+//	FusionVector magneto_offset = {-8.8555, 1.5088, -5.1718};//{-11.8, -5.68, 3.08};
+//	FusionMatrix magneto_transform = {0.0022,    0.0038,    0.0205, -0.0210,    0.0041,    0.0015, -0.0038,   -0.0210,    0.0043};
 
-//	FusionVector magneto_offset = {1.96, -8.81, -29.41};//{-11.8, -5.68, 3.08};
-//	FusionMatrix magneto_transform = {1.051, 0.027, 0.032, 0.027, 1.025, -0.028, 0.032, -0.028, 0.931};
+	//Magneto 1.2 calibration
+	FusionVector magneto_offset = {-10.254290, 1.8038, -4.628919};
+	FusionMatrix magneto_transform = {1.030904, 0.011754, -0.008844, 0.011754, 1.040290, -0.000902, -0.008844, -0.000902, 1.008504};
 
-	FusionVector magneto_offset = {0, 0, 0};//{-11.8, -5.68, 3.08};
-	FusionMatrix magneto_transform = {1,0,0,0,1,0,0,0,1};
+	//no calibration
+//	FusionVector magneto_offset = {0, 0, 0};
+//	FusionMatrix magneto_transform = {1,0,0,0,1,0,0,0,1};
 	FusionVector magneto_data;
 
 	//pitch angle velocity control params
@@ -1663,7 +1686,8 @@ void Start_Data_Reading(void const * argument)
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 
 	HAL_UART_Receive_DMA(&huart1, UART1_rxBuffer, bytetoread);
-	HAL_UART_Receive_IT(&huart2, telem, 11);
+	HAL_UART_Transmit_IT(&huart2, transmit_data, sizeof (transmit_data));
+//	HAL_UART_Receive_IT(&huart2, telem, 11);
 
 
 	vTaskResume( defaultTaskHandle );
@@ -1696,7 +1720,7 @@ void Start_Data_Reading(void const * argument)
 //		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
 //		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
 		  magneto_data.axis.x = mag_data.y;
-		  magneto_data.axis.y = mag_data.x;
+		  magneto_data.axis.y = -mag_data.x;
 		  magneto_data.axis.z = mag_data.z;
 
 		  if(i_mag < 1000){
@@ -1729,8 +1753,8 @@ void Start_Data_Reading(void const * argument)
 		  gyro_z_degree = ((imu.gyr_rps[2]-gyro_offset_x)*57.29);
 
 
-		  magneto_data = FusionVectorSubtract(magneto_data, magneto_offset);
-//		  magneto_data = FusionMatrixMultiplyVector(magneto_transform, FusionVectorSubtract(magneto_data, magneto_offset));
+//		  magneto_data = FusionVectorSubtract(magneto_data, magneto_offset);
+		  magneto_data = FusionMatrixMultiplyVector(magneto_transform, FusionVectorSubtract(magneto_data, magneto_offset));
 
 		  const FusionVector gyroscope = {gyro_x_degree, gyro_y_degree, gyro_z_degree};
 		  const FusionVector accelerometer = {imu.acc_mps2[0]/9.81, imu.acc_mps2[1]/9.81, imu.acc_mps2[2]/9.81};
@@ -1772,11 +1796,7 @@ void Start_Data_Reading(void const * argument)
 //		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
 //		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 500);
 
-		  //telemetria
-		  telemetria_float[0] = M_yaw;
-		  telemetria_float[1] = euler.angle.yaw;
-		  telemetria_float[2] = euler.angle.roll;
-		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
+
 
 		  //altitudeKF(prev_state, &current_state, P_prev, &P, meas);
 		  M_throttle = CRSFtoDuty(RX_throttle);
@@ -1844,24 +1864,32 @@ void Start_Data_Reading(void const * argument)
 //			  ref4 = (uint16_t)(M_throttle + control_roll);
 
 			  //yaw
-			  ref1 = (uint16_t)(M_throttle - control_yaw);
-			  ref2 = (uint16_t)(M_throttle + control_yaw);
-			  ref3 = (uint16_t)(M_throttle - control_yaw);
-			  ref4 = (uint16_t)(M_throttle + control_yaw);
+//			  ref1 = (uint16_t)(M_throttle - control_yaw);
+//			  ref2 = (uint16_t)(M_throttle + control_yaw);
+//			  ref3 = (uint16_t)(M_throttle - control_yaw);
+//			  ref4 = (uint16_t)(M_throttle + control_yaw);
+
+			  //all together
+			  ref1 = (uint16_t)(M_throttle - control_yaw - control_pitch + control_roll);
+			  ref2 = (uint16_t)(M_throttle + control_yaw - control_pitch - control_roll);
+			  ref3 = (uint16_t)(M_throttle - control_yaw + control_pitch - control_roll);
+			  ref4 = (uint16_t)(M_throttle + control_yaw + control_pitch + control_roll);
+
+//			  ref1 = (uint16_t)(M_throttle - control_pitch + control_roll);
+//			  ref2 = (uint16_t)(M_throttle - control_pitch - control_roll);
+//			  ref3 = (uint16_t)(M_throttle + control_pitch - control_roll);
+//			  ref4 = (uint16_t)(M_throttle + control_pitch + control_roll);
+
+//			  ref1 = (uint16_t)(M_throttle);
+//			  ref2 = (uint16_t)(M_throttle);
+//			  ref3 = (uint16_t)(M_throttle);
+//			  ref4 = (uint16_t)(M_throttle);
 
 			  if(ref1<550) ref1 = 550;
 			  if(ref2<550) ref2 = 550;
 			  if(ref3<550) ref3 = 550;
 			  if(ref4<550) ref4 = 550;
-//			  if(gyro_i<500){
-//				  gyro_debug[gyro_i] = imu.gyr_rps[1];
-//				  gyro_i++;
-//			  }
-			  //motor_speed_calc(&ref1, &ref2, &ref3, &ref4, M_pitch, M_roll, M_throttle);
-//			  ref1 = (uint16_t)CRSFtoDuty(RX_throttle);
-//			  ref2 = (uint16_t)CRSFtoDuty(RX_throttle);
-//			  ref3 = (uint16_t)CRSFtoDuty(RX_throttle);
-//			  ref4 = (uint16_t)CRSFtoDuty(RX_throttle);
+
 		  }
 		  else{
 			  uart_telemetria = 1;
@@ -1879,7 +1907,19 @@ void Start_Data_Reading(void const * argument)
 			  ref4 = 550;
 		  }
 
+		  //telemetria
+//		  telemetria_float[0] = (float)mag_data.x;
+//		  telemetria_float[1] = (float)mag_data.y;
+//		  telemetria_float[2] = (float)mag_data.z;
 
+		  telemetria_float[0] = magneto_data.axis.x;
+		  telemetria_float[1] = magneto_data.axis.y;
+		  telemetria_float[2] = magneto_data.axis.z;
+
+//		  telemetria_float[0] = euler.angle.roll;
+//		  telemetria_float[1] = euler.angle.pitch;
+//		  telemetria_float[2] = euler.angle.yaw;
+		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
 
