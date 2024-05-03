@@ -840,6 +840,16 @@ int8_t bmm150_set_presetmode(struct bmm150_settings *settings, struct bmm150_dev
                 settings->z_rep = BMM150_REPZ_ENHANCED;
                 rslt = set_odr_xyz_rep(settings, dev);
                 break;
+            case BMM150_PRESETMODE_FORCED200:
+
+				/* Set the data rate x,y,z repetition
+				 * for Enhanced Accuracy mode
+				 */
+				settings->data_rate = BMM150_DATA_RATE_30HZ;
+				settings->xy_rep = BMM150_REPXY_FORCED200;
+				settings->z_rep = BMM150_REPZ_FORCED200;
+				rslt = set_odr_xyz_rep(settings, dev);
+				break;
             default:
                 rslt = BMM150_E_INVALID_CONFIG;
                 break;

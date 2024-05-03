@@ -25,7 +25,7 @@
 #include "stm32f4xx_hal.h"
 #include "BMI088.h"
 #include "BMP388.h"
-#include "BMM150.h"
+//#include "BMM150.h"
 #include "ESC.h"
 #include "Orifilter.h"
 #include "oriIMU.h"
@@ -1260,7 +1260,7 @@ static int8_t set_config(struct bmm150_dev *dev) {
         /* Setting the preset mode as Low power mode
          * i.e. data rate = 10Hz, XY-rep = 1, Z-rep = 2
          */
-        settings.preset_mode = BMM150_PRESETMODE_HIGHACCURACY;                  // TODO Change it to the desired preset
+        settings.preset_mode = BMM150_PRESETMODE_FORCED200;//BMM150_PRESETMODE_HIGHACCURACY;                  // TODO Change it to the desired preset
         rslt = bmm150_set_presetmode(&settings, dev);
         settings.data_rate = BMM150_DATA_RATE_30HZ;                             // TODO Change it to the desired ODR
         bmm150_set_sensor_settings(BMM150_SEL_DATA_RATE, &settings, dev);
@@ -1609,6 +1609,7 @@ void Start_Data_Reading(void const * argument)
 	 /* Sensor initialization configuration. */
 	struct bmm150_dev dev;
 	struct bmm150_mag_data mag_data;
+	struct bmm150_settings settings;
 
 	/* Status of api are returned to this variable */
 	int8_t rslt;
@@ -1704,13 +1705,23 @@ void Start_Data_Reading(void const * argument)
 	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
 	  	  htim7.Instance->CNT = 0;
 	  	  //BOSCH API magneto begin
-	  	  bmm150_get_interrupt_status(&dev);
-	  	  if (dev.int_status & BMM150_INT_ASSERTED_DRDY) {
-	  		  /* Read mag data */
-	  		  bmm150_read_mag_data(&mag_data, &dev);
-	  	  }
+//	  	  bmm150_get_interrupt_status(&dev);
+//	  	  if (dev.int_status & BMM150_INT_ASSERTED_DRDY) {
+//	  		  /* Read mag data */
+//	  		  bmm150_read_mag_data(&mag_data, &dev);
+//	  	  }
 
 	  	  //BOSCH API magneto end
+
+	  	  //BOSCH API FORCED MAGNETO START
+
+	  	  bmm150_read_mag_data(&mag_data, &dev);
+
+	  	  settings.pwr_mode = BMM150_POWERMODE_FORCED;
+	  	  rslt = bmm150_set_op_mode(&settings, &dev);
+	  	  bmm150_error_codes_print_result("bmm150_set_op_mode", rslt);
+
+	  	//BOSCH API FORCED MAGNETO END
 
 //	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
 

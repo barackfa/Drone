@@ -326,6 +326,7 @@
 #define BMM150_PRESETMODE_REGULAR                 UINT8_C(0x02)
 #define BMM150_PRESETMODE_HIGHACCURACY            UINT8_C(0x03)
 #define BMM150_PRESETMODE_ENHANCED                UINT8_C(0x04)
+#define BMM150_PRESETMODE_FORCED200				  UINT8_C(0x05)
 
 #define BMM150_OP_MODE_MSK                        UINT8_C(0x06)
 #define BMM150_OP_MODE_POS                        UINT8_C(0x01)
@@ -335,12 +336,14 @@
 #define BMM150_REPXY_REGULAR                      UINT8_C(0x04)
 #define BMM150_REPXY_ENHANCED                     UINT8_C(0x07)
 #define BMM150_REPXY_HIGHACCURACY                 UINT8_C(0x17)
+#define BMM150_REPXY_FORCED200	                  UINT8_C(0x02)
 
 /*! @name PRESET MODES - REPETITIONS-Z RATES */
 #define BMM150_REPZ_LOWPOWER                      UINT8_C(0x01)
 #define BMM150_REPZ_REGULAR                       UINT8_C(0x07)
 #define BMM150_REPZ_ENHANCED                      UINT8_C(0x0D)
 #define BMM150_REPZ_HIGHACCURACY                  UINT8_C(0x29)
+#define BMM150_REPZ_FORCED200	                  UINT8_C(0x02)
 
 /*! @name Self test settings */
 #define BMM150_DISABLE_XY_AXIS                    UINT8_C(0x03)
