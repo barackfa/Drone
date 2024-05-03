@@ -1491,10 +1491,15 @@ void Start_Data_Reading(void const * argument)
 
 	//magnetometer calibration
 	//MATLAB calibration
-//	FusionVector magneto_offset = {-8.8555, 1.5088, -5.1718};//{-11.8, -5.68, 3.08};
-//	FusionMatrix magneto_transform = {0.0022,    0.0038,    0.0205, -0.0210,    0.0041,    0.0015, -0.0038,   -0.0210,    0.0043};
+//	FusionVector magneto_offset = {-10.0232, 2.6086, -4.2483};//{-11.8, -5.68, 3.08};
+//	FusionMatrix magneto_transform = {0.0047,   -0.0015,    0.0203, 0.0132,   -0.0160,   -0.0042, 0.0161,    0.0139,   -0.0027};
+
 
 	//Magneto 1.2 calibration
+//	FusionVector magneto_offset = {-10.254290, 1.8038, -4.628919};
+//	FusionMatrix magneto_transform = {1.030904, 0.011754, -0.008844, 0.011754, 1.040290, -0.000902, -0.008844, -0.000902, 1.008504};
+
+	//Magneto 1.2 calibration, kinda works
 	FusionVector magneto_offset = {-10.254290, 1.8038, -4.628919};
 	FusionMatrix magneto_transform = {1.030904, 0.011754, -0.008844, 0.011754, 1.040290, -0.000902, -0.008844, -0.000902, 1.008504};
 
@@ -1912,13 +1917,13 @@ void Start_Data_Reading(void const * argument)
 //		  telemetria_float[1] = (float)mag_data.y;
 //		  telemetria_float[2] = (float)mag_data.z;
 
-		  telemetria_float[0] = magneto_data.axis.x;
-		  telemetria_float[1] = magneto_data.axis.y;
-		  telemetria_float[2] = magneto_data.axis.z;
+//		  telemetria_float[0] = magneto_data.axis.x;
+//		  telemetria_float[1] = magneto_data.axis.y;
+//		  telemetria_float[2] = magneto_data.axis.z;
 
-//		  telemetria_float[0] = euler.angle.roll;
-//		  telemetria_float[1] = euler.angle.pitch;
-//		  telemetria_float[2] = euler.angle.yaw;
+		  telemetria_float[0] = euler.angle.roll;
+		  telemetria_float[1] = euler.angle.pitch;
+		  telemetria_float[2] = euler.angle.yaw;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
