@@ -959,9 +959,9 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 85-1;
+  htim7.Init.Prescaler = 84-1;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 10000-1;
+  htim7.Init.Period = 60000-1;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -1702,7 +1702,7 @@ void Start_Data_Reading(void const * argument)
   for(;;)
   {
 
-	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
+
 	  	  htim7.Instance->CNT = 0;
 	  	  //BOSCH API magneto begin
 //	  	  bmm150_get_interrupt_status(&dev);
@@ -1750,12 +1750,12 @@ void Start_Data_Reading(void const * argument)
 		  BMI088_ReadAccelerometer(&imu);
 
 
-		  //BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time); //2.46 ms - 400kHz
+		  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time); //2.46 ms - 400kHz
 
 
-		  //BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp); //2.7 us
+		  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp); //2.7 us
 		  //full loop time 2.94 ms, without time read 2.48 ms
-		  //hz = BMP388_FindAltitude(ground_pressure, press)-h0;
+		  hz = BMP388_FindAltitude(ground_pressure, press)-h0;
 
 
 		  //filterUpdateIMU(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], &q);
@@ -1934,14 +1934,15 @@ void Start_Data_Reading(void const * argument)
 
 		  telemetria_float[0] = euler.angle.roll;
 		  telemetria_float[1] = euler.angle.pitch;
-		  telemetria_float[2] = euler.angle.yaw;
+		  telemetria_float[2] = mytimer;//euler.angle.yaw;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
 
 //		  set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
-	osDelay(3);
+		  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
+	osDelay(4);
 //	osDelay(48);
   }
   /* USER CODE END Start_Data_Reading */
