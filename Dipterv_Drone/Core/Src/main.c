@@ -30,7 +30,7 @@
 #include "Orifilter.h"
 #include "oriIMU.h"
 #include "Fusion.h"
-//#include "Altitude_filter.h"
+#include "Altitude_filter.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -49,7 +49,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define SAMPLE_PERIOD 0.005f // replace this with actual sample period
-#define ground_pressure 101352
+#define ground_pressure 100485
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -111,8 +111,8 @@ uint32_t raw_temp;
 uint32_t raw_time;
 float press;
 float temp;
-float hz;
-float h0;
+float hz = 0;
+float h0 = 0;
 
 //filter objects
 float gyro_x_degree = 0;
@@ -138,6 +138,15 @@ FusionVector aE;
 //KF_Matrix33 P_prev;
 //KF_Matrix33 P;
 //KF_Matrix21 meas;
+
+
+//2D KF
+
+KF_Matrix21 prev_state = {0,0};
+KF_Matrix21 current_state = {0,0};
+KF_Matrix22 P_prev = {0,0,0,0};
+KF_Matrix22 P = {0,0,0,0};
+KF_Matrix21 meas = {0,0};
 
 //distance measurement
 uint32_t IC_Val1 = 0;
@@ -334,7 +343,7 @@ int main(void)
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 600);
+  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 800);
   Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
 
   /* definition and creation of Orientation_cal */
@@ -1583,12 +1592,14 @@ void Start_Data_Reading(void const * argument)
 	for(int i_init = 0; i_init<2000; i_init++ ){
 	  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time);
 	  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp);
-	  h0 += BMP388_FindAltitude(ground_pressure, press);
+	  if(i_init % 10 == 9){
+		  h0 += BMP388_FindAltitude(ground_pressure, press);
+	  }
 	  BMI088_ReadGyroscope(&imu);
 	  gyro_offset_x_calc += imu.gyr_rps[0];
 	  gyro_offset_y_calc += imu.gyr_rps[1];
 	  gyro_offset_z_calc += imu.gyr_rps[2];
-	  HAL_Delay(1);
+	  HAL_Delay(5);
 	}
 	h0 /= 2000;
 	gyro_offset_x = gyro_offset_x_calc/2000;
@@ -1790,6 +1801,10 @@ void Start_Data_Reading(void const * argument)
 		  aE.axis.z -=9.85173;
 
 
+		  meas.a11 = hz;
+		  meas.a21 = aE.axis.z;
+		  altitudeKF(prev_state, &current_state, P_prev, &P, meas);
+
 
 		  // calculate rotation around yaw axis
 		  if(prev_euler_yaw > 170 && euler.angle.yaw < 0){
@@ -1814,7 +1829,7 @@ void Start_Data_Reading(void const * argument)
 
 
 
-		  //altitudeKF(prev_state, &current_state, P_prev, &P, meas);
+		  //radio control references
 		  M_throttle = CRSFtoDuty(RX_throttle);
 		  M_pitch = CRSFtoPitch(RX_pitch)*25;
 		  M_roll = CRSFtoRoll(RX_roll)*15;
@@ -1932,9 +1947,9 @@ void Start_Data_Reading(void const * argument)
 //		  telemetria_float[1] = magneto_data.axis.y;
 //		  telemetria_float[2] = magneto_data.axis.z;
 
-		  telemetria_float[0] = euler.angle.roll;
-		  telemetria_float[1] = euler.angle.pitch;
-		  telemetria_float[2] = mytimer;//euler.angle.yaw;
+		  telemetria_float[0] = current_state.a11;
+		  telemetria_float[1] = hz;
+		  telemetria_float[2] = h0;//mytimer;//euler.angle.yaw;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
