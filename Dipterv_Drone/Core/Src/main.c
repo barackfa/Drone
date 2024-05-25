@@ -1342,7 +1342,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		htim6.Instance->CNT = 0;
 	}
 	if(huart == &huart2){
-		telemetria_data_sent = 1;
 //		if(uart_telemetria == 1){
 //			HAL_UART_Receive_IT(&huart2, telem, 11);
 //		}
@@ -1363,8 +1362,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-	//HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-//	uint8_t telemetria[8];
 	uint8_t telemetria_data[140] = "HELLO WORLD \r\n";
 	extern QueueHandle_t telemetria_Queue;
 	float telemetria_send[19];
@@ -1384,19 +1381,7 @@ void StartDefaultTask(void const * argument)
 		  }
 	  }
 	  if (xQueueReceive(telemetria_Queue, (void*)&telemetria_send, 0) == pdTRUE){
-//		  sprintf((char*)telemetria_data, "%2.4f, %2.4f, %2.4f, %3.3f, %3.3f, %3.3f, %4.2f, %4.2f, %4.2f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12]); //%5.2f
-//		  sprintf((char*)telemetria_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)((drone_angle[0])*10), (int)((drone_angle[1])*10), (int)(drone_angle[2])*10); //%5.2f
-	//	  sprintf((char*)telemetria_data, "Yaw: 115.47\r\n");
 
-//		  for(int i_telem_send = 0; i_telem_send < 13 ;i_telem_send++){
-//			  if(i_telem_send == 12 ){
-//				  sprintf((char*)telemetria_data, "%4.4f, ", telemetria_send[i_telem_send]);
-//			  }
-//			  else{
-//				  sprintf((char*)telemetria_data, "%4.4f\r\n", telemetria_send[i_telem_send]);
-//			  }
-//			  HAL_UART_Transmit (&huart2, telemetria_data, sizeof (telemetria_data), 400);
-//		  }
 		  if(telemetria_data_sent == 1){
 //			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12]); //%5.2f
 			  sprintf((char*)telemetria_data, "%2.2f, %2.2f, %2.2f, %3.2f, %3.2f, %3.2f, %4.1f, %4.1f, %4.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f, %3.1f\r\n", telemetria_send[0], telemetria_send[1], telemetria_send[2], telemetria_send[3], telemetria_send[4], telemetria_send[5], telemetria_send[6], telemetria_send[7], telemetria_send[8], telemetria_send[9], telemetria_send[10], telemetria_send[11], telemetria_send[12],telemetria_send[13], telemetria_send[14], telemetria_send[15], telemetria_send[16], telemetria_send[17], telemetria_send[18]); //%5.2f
@@ -1515,12 +1500,6 @@ void Start_Data_Reading(void const * argument)
 	gyro_offset_y = gyro_offset_y_calc/2000;
 	gyro_offset_z = gyro_offset_z_calc/2000;
 
-	//magneto sensor init
-//	bmm.hi2c_handle = &hi2c1;
-
-//	BMM150_Init(&bmm);
-//	HAL_Delay(10);
-//	BMM150_Get_TrimData(&bmm, &trim_data);
 
 	uint8_t transmit_data[60] = "Hello Andris\r\n";
 	float telemetria_float[19];
@@ -1537,24 +1516,6 @@ void Start_Data_Reading(void const * argument)
 	w.w_bz=0;
 
 
-
-//	prev_state.a11=0;
-//	prev_state.a21=0;
-//	prev_state.a31=0;
-//	current_state.a11=0;
-//	current_state.a21=0;
-//	current_state.a31=0;
-//	P_prev.a11 = 0;
-//	P_prev.a12 = 0;
-//	P_prev.a13 = 0;
-//	P_prev.a21 = 0;
-//	P_prev.a22 = 0;
-//	P_prev.a23 = 0;
-//	P_prev.a31 = 0;
-//	P_prev.a32 = 0;
-//	P_prev.a33 = 0;
-//	meas.a11=0;
-//	meas.a21=0;
 
 	HAL_TIM_Base_Start_IT(&htim6);
 	HAL_TIM_Base_Start_IT(&htim7);
@@ -1576,7 +1537,7 @@ void Start_Data_Reading(void const * argument)
 
 	HAL_UART_Receive_DMA(&huart1, UART1_rxBuffer, bytetoread);
 	HAL_UART_Transmit_IT(&huart2, transmit_data, sizeof (transmit_data));
-//	HAL_UART_Receive_IT(&huart2, telem, 11);
+
 
 
 	vTaskResume( defaultTaskHandle );
@@ -1587,46 +1548,20 @@ void Start_Data_Reading(void const * argument)
 
 	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
 	  	  htim7.Instance->CNT = 0;
-//	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
-
-		  // opmode start a measurement, because of the set preset mode, the results will be available in the next loop,
-		  // with nXY = 5, nZ = 6 delay is -> 4.16 ms ~240Hz -> 200 Hz control loop available
-//		  BMM150_GetRawData(&bmm, &field_x, &field_y, &field_z, &Rhall, 8); // all time 1.31 ms magnetometer i2c 100kHz, 330 us with 400 kHz
-
 
 
 		  // magnetic field data in uT
-//		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
-//		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
-//		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
 		  magneto_data.axis.x = mag_data_y;
 		  magneto_data.axis.y = -mag_data_x;
 		  magneto_data.axis.z = mag_data_z;
 
-		  if(i_mag < 1000){
-			  mag_debug_x[i_mag] = mag_data_x;
-			  mag_debug_y[i_mag] = mag_data_y;
-			  i_mag++;
-		  }
 
 		  //read IMU
 		  BMI088_ReadGyroscope(&imu);	// imu read 119 us
 		  BMI088_ReadAccelerometer(&imu);
 
 
-		  //BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time); //2.46 ms - 400kHz
 
-
-		  //BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp); //2.7 us
-		  //full loop time 2.94 ms, without time read 2.48 ms
-		  //hz = BMP388_FindAltitude(ground_pressure, press)-h0;
-
-
-		  //filterUpdateIMU(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], &q);
-		  //filterUpdate((imu.gyr_rps[0]-gyro_offset_x), (imu.gyr_rps[1]-gyro_offset_y), imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], (imu.gyr_rps[2]-gyro_offset_z), mag_data_y, -mag_data_x, mag_data_z, &q, &f, &w);
-
-
-		  //eulerAngles(q, &roll, &pitch, &yaw);
 
 		  gyro_x_degree = ((imu.gyr_rps[0]-gyro_offset_x)*57.29);
 		  gyro_y_degree = ((imu.gyr_rps[1]-gyro_offset_x)*57.29);
@@ -1634,7 +1569,6 @@ void Start_Data_Reading(void const * argument)
 
 
 		  magneto_data = FusionVectorSubtract(magneto_data, magneto_offset);
-//		  magneto_data = FusionMatrixMultiplyVector(magneto_transform, FusionVectorSubtract(magneto_data, magneto_offset));
 
 		  const FusionVector gyroscope = {gyro_x_degree, gyro_y_degree, gyro_z_degree};
 		  const FusionVector accelerometer = {imu.acc_mps2[0]/9.81, imu.acc_mps2[1]/9.81, imu.acc_mps2[2]/9.81};
@@ -1667,19 +1601,7 @@ void Start_Data_Reading(void const * argument)
 		  prev_euler_yaw = euler.angle.yaw;
 
 
-		  //python
-//		  sprintf((char*)transmit_data, "Uni:0,0,0,0,0,0,%5.2f,%5.2f,%5.2f\r\n", mag_data_y, (-mag_data_x), mag_data_z); //%5.2f
-//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
-//		  HAL_Delay(1);
 
-		  //motioncal
-//		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
-//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
-
-
-
-
-		  //altitudeKF(prev_state, &current_state, P_prev, &P, meas);
 		  M_throttle = CRSFtoDuty(RX_throttle);
 		  M_pitch = CRSFtoPitch(RX_pitch)*25;
 		  M_roll = CRSFtoRoll(RX_roll)*15;
@@ -1777,15 +1699,7 @@ void Start_Data_Reading(void const * argument)
 			  if(ref3>950) ref3 = 950;
 			  if(ref4>950) ref4 = 950;
 
-//			  if(gyro_i<500){
-//				  gyro_debug[gyro_i] = imu.gyr_rps[1];
-//				  gyro_i++;
-//			  }
-			  //motor_speed_calc(&ref1, &ref2, &ref3, &ref4, M_pitch, M_roll, M_throttle);
-//			  ref1 = (uint16_t)CRSFtoDuty(RX_throttle);
-//			  ref2 = (uint16_t)CRSFtoDuty(RX_throttle);
-//			  ref3 = (uint16_t)CRSFtoDuty(RX_throttle);
-//			  ref4 = (uint16_t)CRSFtoDuty(RX_throttle);
+
 		  }
 		  else{
 			  uart_telemetria = 1;
@@ -1836,10 +1750,9 @@ void Start_Data_Reading(void const * argument)
 
 
 
-		  //set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
+
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
 	osDelay(3);
-//	osDelay(48);
   }
   /* USER CODE END Start_Data_Reading */
 }
