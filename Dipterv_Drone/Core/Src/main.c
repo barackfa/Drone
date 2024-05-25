@@ -78,8 +78,7 @@ UART_HandleTypeDef huart6;
 DMA_HandleTypeDef hdma_usart1_rx;
 
 osThreadId defaultTaskHandle;
-osThreadId Data_ReadingHandle;
-osThreadId Orientation_calHandle;
+osThreadId ControlHandle;
 /* USER CODE BEGIN PV */
 
 
@@ -231,8 +230,7 @@ static void MX_ADC3_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
 void StartDefaultTask(void const * argument);
-void Start_Data_Reading(void const * argument);
-void Start_Orientation(void const * argument);
+void Start_Control(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -324,15 +322,10 @@ int main(void)
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 500);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-  vTaskSuspend( defaultTaskHandle );
 
-  /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 600);
-  Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
-
-  /* definition and creation of Orientation_cal */
-  osThreadDef(Orientation_cal, Start_Orientation, osPriorityBelowNormal, 0, 200);
-  Orientation_calHandle = osThreadCreate(osThread(Orientation_cal), NULL);
+  /* definition and creation of Control */
+  osThreadDef(Control, Start_Control, osPriorityNormal, 0, 600);
+  ControlHandle = osThreadCreate(osThread(Control), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1391,21 +1384,21 @@ void StartDefaultTask(void const * argument)
 	  }
 
 
-	  osDelay(10);
+	  osDelay(25);
   }
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_Start_Data_Reading */
+/* USER CODE BEGIN Header_Start_Control */
 /**
-* @brief Function implementing the Data_Reading thread.
+* @brief Function implementing the Control thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Start_Data_Reading */
-void Start_Data_Reading(void const * argument)
+/* USER CODE END Header_Start_Control */
+void Start_Control(void const * argument)
 {
-  /* USER CODE BEGIN Start_Data_Reading */
+  /* USER CODE BEGIN Start_Control */
 	extern QueueHandle_t telemetria_Queue;
 
 	//magnetometer calibration
@@ -1546,8 +1539,8 @@ void Start_Data_Reading(void const * argument)
   for(;;)
   {
 
-	  	  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
-	  	  htim7.Instance->CNT = 0;
+		  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
+		  htim7.Instance->CNT = 0;
 
 
 		  // magnetic field data in uT
@@ -1754,35 +1747,7 @@ void Start_Data_Reading(void const * argument)
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
 	osDelay(3);
   }
-  /* USER CODE END Start_Data_Reading */
-}
-
-/* USER CODE BEGIN Header_Start_Orientation */
-/**
-* @brief Function implementing the Orientation_cal thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_Start_Orientation */
-void Start_Orientation(void const * argument)
-{
-  /* USER CODE BEGIN Start_Orientation */
-//	q.SEq_1=1;
-//	q.SEq_2=0;
-//	q.SEq_3=0;
-//	q.SEq_4=0;
-  /* Infinite loop */
-  for(;;)
-  {
-//	  if(oricalc == 1){
-//		//filterUpdateIMU(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], &q );
-//		filterUpdate(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], mag_data_y, -mag_data_x, mag_data_z, &q, &f);
-//		eulerAngles(q, &roll, &pitch, &yaw);
-//		oricalc = 0;
-//	  }
-    osDelay(1);
-  }
-  /* USER CODE END Start_Orientation */
+  /* USER CODE END Start_Control */
 }
 
 /**
