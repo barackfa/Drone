@@ -114,14 +114,7 @@ float gyro_x_degree = 0;
 float gyro_y_degree = 0;
 float gyro_z_degree = 0;
 quaternion q;
-flux f;
-w_err w;
-float roll;
-float pitch;
-float yaw;
 float prev_yaw = 0;
-float yaw_offset = 0;
-float yaw_zero_offset = 0;
 float abs_yaw = 0;
 FusionAhrs ahrs;
 FusionEuler euler;
@@ -157,18 +150,11 @@ uint8_t oricalc = 0;
 
 
 // debug variables
-float gyro_debug[500] = {15};
-int gyro_i = 0;
 int debug_i = 0;
 uint8_t timerse = 0;
 uint8_t state = 1;
 int mytimer;
 
-float m_alfa = 0;
-float m_beta = 0;
-float m_gamma = 0;
-float xy2 = 0;
-int offset_i = 0;
 double gyro_offset_x_calc = 0;
 double gyro_offset_y_calc = 0;
 double gyro_offset_z_calc = 0;
@@ -181,9 +167,6 @@ double gyro_offset_z = 0;
 double acc_offset_x = 0;
 double acc_offset_y = 0;
 double acc_offset_z = 0;
-float mag_debug_x[1000];
-float mag_debug_y[1000];
-int i_mag = 0;
 
 //ESC ref throttle params
 uint16_t ref1;
@@ -1503,10 +1486,6 @@ void Start_Control(void const * argument)
 	q.SEq_2=0;
 	q.SEq_3=0;
 	q.SEq_4=0;
-
-	w.w_bx=0;
-	w.w_by=0;
-	w.w_bz=0;
 
 
 
