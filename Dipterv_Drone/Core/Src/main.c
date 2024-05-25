@@ -49,7 +49,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define SAMPLE_PERIOD 0.005f // replace this with actual sample period
-#define ground_pressure 100485
+#define ground_pressure 101325
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -113,6 +113,7 @@ float press;
 float temp;
 float hz = 0;
 float h0 = 0;
+float p0 = 0;
 
 //filter objects
 float gyro_x_degree = 0;
@@ -1481,7 +1482,7 @@ void StartDefaultTask(void const * argument)
 	  }
 
 
-	  osDelay(10);
+	  osDelay(20);
   }
   /* USER CODE END 5 */
 }
@@ -1590,18 +1591,21 @@ void Start_Data_Reading(void const * argument)
 	BMP388_Init(&bmp);
 
 	for(int i_init = 0; i_init<2000; i_init++ ){
-	  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time);
-	  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp);
-	  if(i_init % 10 == 9){
+	  if(i_init % 5 == 4){
+		  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time);
+		  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp);
 		  h0 += BMP388_FindAltitude(ground_pressure, press);
+		  p0 += press;
 	  }
 	  BMI088_ReadGyroscope(&imu);
 	  gyro_offset_x_calc += imu.gyr_rps[0];
 	  gyro_offset_y_calc += imu.gyr_rps[1];
 	  gyro_offset_z_calc += imu.gyr_rps[2];
-	  HAL_Delay(5);
+	  osDelay(5);
 	}
-	h0 /= 2000;
+	h0 /= 400;
+	p0 /= 400;
+	p0 -= ground_pressure;
 	gyro_offset_x = gyro_offset_x_calc/2000;
 	gyro_offset_y = gyro_offset_y_calc/2000;
 	gyro_offset_z = gyro_offset_z_calc/2000;
@@ -1766,7 +1770,8 @@ void Start_Data_Reading(void const * argument)
 
 		  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp); //2.7 us
 		  //full loop time 2.94 ms, without time read 2.48 ms
-		  hz = BMP388_FindAltitude(ground_pressure, press)-h0;
+//		  hz = BMP388_FindAltitude(ground_pressure, press)-h0;
+		  hz = BMP388_FindAltitude(ground_pressure, press-p0);
 
 
 		  //filterUpdateIMU(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], &q);
@@ -1947,9 +1952,9 @@ void Start_Data_Reading(void const * argument)
 //		  telemetria_float[1] = magneto_data.axis.y;
 //		  telemetria_float[2] = magneto_data.axis.z;
 
-		  telemetria_float[0] = current_state.a11;
-		  telemetria_float[1] = hz;
-		  telemetria_float[2] = h0;//mytimer;//euler.angle.yaw;
+		  telemetria_float[0] = hz;
+		  telemetria_float[1] = press;
+		  telemetria_float[2] = p0;//mytimer;//euler.angle.yaw;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
