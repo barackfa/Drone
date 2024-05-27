@@ -1591,20 +1591,22 @@ void Start_Data_Reading(void const * argument)
 	BMP388_Init(&bmp);
 
 	for(int i_init = 0; i_init<2000; i_init++ ){
-	  if(i_init % 5 == 4){
-		  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time);
-		  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp);
-		  h0 += BMP388_FindAltitude(ground_pressure, press);
-		  p0 += press;
-	  }
 	  BMI088_ReadGyroscope(&imu);
 	  gyro_offset_x_calc += imu.gyr_rps[0];
 	  gyro_offset_y_calc += imu.gyr_rps[1];
 	  gyro_offset_z_calc += imu.gyr_rps[2];
 	  osDelay(5);
 	}
-	h0 /= 400;
-	p0 /= 400;
+	for(int i_init = 0; i_init<100; i_init++ ){
+	  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time);
+	  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp);
+	  h0 += BMP388_FindAltitude(ground_pressure, press);
+	  p0 += press;
+	  osDelay(20);
+	}
+
+	h0 /= 100;
+	p0 /= 100;
 	p0 -= ground_pressure;
 	gyro_offset_x = gyro_offset_x_calc/2000;
 	gyro_offset_y = gyro_offset_y_calc/2000;
@@ -1754,11 +1756,6 @@ void Start_Data_Reading(void const * argument)
 		  magneto_data.axis.y = -mag_data.x;
 		  magneto_data.axis.z = mag_data.z;
 
-		  if(i_mag < 1000){
-			  mag_debug_x[i_mag] = mag_data_x;
-			  mag_debug_y[i_mag] = mag_data_y;
-			  i_mag++;
-		  }
 
 		  //read IMU
 		  BMI088_ReadGyroscope(&imu);	// imu read 119 us
@@ -1953,7 +1950,7 @@ void Start_Data_Reading(void const * argument)
 //		  telemetria_float[2] = magneto_data.axis.z;
 
 		  telemetria_float[0] = hz;
-		  telemetria_float[1] = press;
+		  telemetria_float[1] = current_state.a11;
 		  telemetria_float[2] = p0;//mytimer;//euler.angle.yaw;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
