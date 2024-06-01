@@ -82,8 +82,7 @@ UART_HandleTypeDef huart6;
 DMA_HandleTypeDef hdma_usart1_rx;
 
 osThreadId defaultTaskHandle;
-osThreadId Data_ReadingHandle;
-osThreadId Orientation_calHandle;
+osThreadId ControlHandle;
 /* USER CODE BEGIN PV */
 
 
@@ -134,11 +133,6 @@ FusionEuler euler;
 FusionMatrix ERS;
 FusionVector aE;
 
-//KF_Matrix31 prev_state;
-//KF_Matrix31 current_state;
-//KF_Matrix33 P_prev;
-//KF_Matrix33 P;
-//KF_Matrix21 meas;
 
 
 //2D KF
@@ -246,8 +240,7 @@ static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_TIM10_Init(void);
 void StartDefaultTask(void const * argument);
-void Start_Data_Reading(void const * argument);
-void Start_Orientation(void const * argument);
+void Start_Control(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -343,13 +336,9 @@ int main(void)
   osThreadDef(defaultTask, StartDefaultTask, osPriorityBelowNormal, 0, 500);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* definition and creation of Data_Reading */
-  osThreadDef(Data_Reading, Start_Data_Reading, osPriorityNormal, 0, 800);
-  Data_ReadingHandle = osThreadCreate(osThread(Data_Reading), NULL);
-
-  /* definition and creation of Orientation_cal */
-  osThreadDef(Orientation_cal, Start_Orientation, osPriorityBelowNormal, 0, 200);
-  Orientation_calHandle = osThreadCreate(osThread(Orientation_cal), NULL);
+  /* definition and creation of Control */
+  osThreadDef(Control, Start_Control, osPriorityNormal, 0, 600);
+  ControlHandle = osThreadCreate(osThread(Control), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -969,9 +958,9 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 84-1;
+  htim7.Init.Prescaler = 85-1;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 60000-1;
+  htim7.Init.Period = 10000-1;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -1487,29 +1476,20 @@ void StartDefaultTask(void const * argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_Start_Data_Reading */
+/* USER CODE BEGIN Header_Start_Control */
 /**
-* @brief Function implementing the Data_Reading thread.
+* @brief Function implementing the Control thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Start_Data_Reading */
-void Start_Data_Reading(void const * argument)
+/* USER CODE END Header_Start_Control */
+void Start_Control(void const * argument)
 {
-  /* USER CODE BEGIN Start_Data_Reading */
+  /* USER CODE BEGIN Start_Control */
 	extern QueueHandle_t telemetria_Queue;
-
-	//magnetometer calibration
-	//MATLAB calibration
-//	FusionVector magneto_offset = {-10.0232, 2.6086, -4.2483};//{-11.8, -5.68, 3.08};
-//	FusionMatrix magneto_transform = {0.0047,   -0.0015,    0.0203, 0.0132,   -0.0160,   -0.0042, 0.0161,    0.0139,   -0.0027};
 
 
 	//Magneto 1.2 calibration
-//	FusionVector magneto_offset = {-10.254290, 1.8038, -4.628919};
-//	FusionMatrix magneto_transform = {1.030904, 0.011754, -0.008844, 0.011754, 1.040290, -0.000902, -0.008844, -0.000902, 1.008504};
-
-	//Magneto 1.2 calibration, kinda works
 	FusionVector magneto_offset = {-10.254290, 1.8038, -4.628919};
 	FusionMatrix magneto_transform = {1.030904, 0.011754, -0.008844, 0.011754, 1.040290, -0.000902, -0.008844, -0.000902, 1.008504};
 
@@ -1582,7 +1562,7 @@ void Start_Data_Reading(void const * argument)
 
 	BMP388_SetTempOS(&bmp, 0);
 	HAL_Delay(10);
-	BMP388_SetPressOS(&bmp, 0x03); //0 volt, de adatlap alapján 8x-nek megfelelő 0x03 beírva
+	BMP388_SetPressOS(&bmp, 0x03);
 	HAL_Delay(10);
 	BMP388_SetIIRFilterCoeff(&bmp, 2);
 	HAL_Delay(10);
@@ -1590,6 +1570,7 @@ void Start_Data_Reading(void const * argument)
 	HAL_Delay(10);
 	BMP388_Init(&bmp);
 
+	//gyro offset calculation
 	for(int i_init = 0; i_init<2000; i_init++ ){
 	  BMI088_ReadGyroscope(&imu);
 	  gyro_offset_x_calc += imu.gyr_rps[0];
@@ -1597,7 +1578,10 @@ void Start_Data_Reading(void const * argument)
 	  gyro_offset_z_calc += imu.gyr_rps[2];
 	  osDelay(5);
 	}
-	for(int i_init = 0; i_init<100; i_init++ ){
+
+
+	//barometer offset calculation
+	for(int i_init = 0; i_init<100; i_init++ ){ //100 seems to work
 	  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time);
 	  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp);
 	  h0 += BMP388_FindAltitude(ground_pressure, press);
@@ -1611,14 +1595,6 @@ void Start_Data_Reading(void const * argument)
 	gyro_offset_x = gyro_offset_x_calc/2000;
 	gyro_offset_y = gyro_offset_y_calc/2000;
 	gyro_offset_z = gyro_offset_z_calc/2000;
-
-	//magneto sensor init
-//	bmm.hi2c_handle = &hi2c1;
-//
-//	BMM150_Init(&bmm);
-//	HAL_Delay(10);
-//	BMM150_Get_TrimData(&bmm, &trim_data);
-
 
 
 
@@ -1635,25 +1611,16 @@ void Start_Data_Reading(void const * argument)
 	bmm150_error_codes_print_result("bmm150_interface_selection", rslt);
 
 	if (rslt == BMM150_OK) {
-	        rslt = bmm150_init(&dev);
-	        bmm150_error_codes_print_result("bmm150_init", rslt);
+			rslt = bmm150_init(&dev);
+			bmm150_error_codes_print_result("bmm150_init", rslt);
 
-	        if (rslt == BMM150_OK) {
-	            rslt = set_config(&dev);
-	            bmm150_error_codes_print_result("set_config", rslt);
-
-	//            if (rslt == BMM150_OK) {
-	//                rslt = get_data(&dev);
-	//                bmm150_error_codes_print_result("get_data", rslt);
-	//            }
-	        }
-	    }
+			if (rslt == BMM150_OK) {
+				rslt = set_config(&dev);
+				bmm150_error_codes_print_result("set_config", rslt);
+			}
+		}
 
 	//BOSCH API
-
-
-
-
 
 
 	uint8_t transmit_data[40];
@@ -1671,24 +1638,6 @@ void Start_Data_Reading(void const * argument)
 	w.w_bz=0;
 
 
-
-//	prev_state.a11=0;
-//	prev_state.a21=0;
-//	prev_state.a31=0;
-//	current_state.a11=0;
-//	current_state.a21=0;
-//	current_state.a31=0;
-//	P_prev.a11 = 0;
-//	P_prev.a12 = 0;
-//	P_prev.a13 = 0;
-//	P_prev.a21 = 0;
-//	P_prev.a22 = 0;
-//	P_prev.a23 = 0;
-//	P_prev.a31 = 0;
-//	P_prev.a32 = 0;
-//	P_prev.a33 = 0;
-//	meas.a11=0;
-//	meas.a21=0;
 
 	HAL_TIM_Base_Start_IT(&htim6);
 	HAL_TIM_Base_Start_IT(&htim7);
@@ -1720,38 +1669,29 @@ void Start_Data_Reading(void const * argument)
   {
 
 
-	  	  htim7.Instance->CNT = 0;
-	  	  //BOSCH API magneto begin
+		  htim7.Instance->CNT = 0;
+		  //BOSCH API NORMAL MAGNETO START
 //	  	  bmm150_get_interrupt_status(&dev);
 //	  	  if (dev.int_status & BMM150_INT_ASSERTED_DRDY) {
 //	  		  /* Read mag data */
 //	  		  bmm150_read_mag_data(&mag_data, &dev);
 //	  	  }
 
-	  	  //BOSCH API magneto end
+		  //BOSCH API NORMAL MAGNETO END
 
-	  	  //BOSCH API FORCED MAGNETO START
+		  //BOSCH API FORCED MAGNETO START
 
-	  	  bmm150_read_mag_data(&mag_data, &dev);
+		  bmm150_read_mag_data(&mag_data, &dev);
 
-	  	  settings.pwr_mode = BMM150_POWERMODE_FORCED;
-	  	  rslt = bmm150_set_op_mode(&settings, &dev);
-	  	  bmm150_error_codes_print_result("bmm150_set_op_mode", rslt);
+		  settings.pwr_mode = BMM150_POWERMODE_FORCED;
+		  rslt = bmm150_set_op_mode(&settings, &dev);
+		  bmm150_error_codes_print_result("bmm150_set_op_mode", rslt);
 
-	  	//BOSCH API FORCED MAGNETO END
-
-//	  	  BMM150_Set_OpMode(&bmm, 0x02); //280 us - 100kHz,
-
-		  // opmode start a measurement, because of the set preset mode, the results will be available in the next loop,
-		  // with nXY = 5, nZ = 6 delay is -> 4.16 ms ~240Hz -> 200 Hz control loop available
-//		  BMM150_GetRawData(&bmm, &field_x, &field_y, &field_z, &Rhall, 8); // all time 1.31 ms magnetometer i2c 100kHz, 330 us with 400 kHz
+		//BOSCH API FORCED MAGNETO END
 
 
 
 		  // magnetic field data in uT
-//		  mag_data_x = BMM150_Compensate_x(field_x, Rhall,  &trim_data); //magn data compensation 33.4 us
-//		  mag_data_y = BMM150_Compensate_y(field_y, Rhall,  &trim_data);
-//		  mag_data_z = BMM150_Compensate_z(field_z, Rhall,  &trim_data);
 		  magneto_data.axis.x = mag_data.y;
 		  magneto_data.axis.y = -mag_data.x;
 		  magneto_data.axis.z = mag_data.z;
@@ -1761,28 +1701,21 @@ void Start_Data_Reading(void const * argument)
 		  BMI088_ReadGyroscope(&imu);	// imu read 119 us
 		  BMI088_ReadAccelerometer(&imu);
 
-
+		  //read barometer
 		  BMP388_ReadRawPressTempTime(&bmp, &raw_press, &raw_temp, &raw_time); //2.46 ms - 400kHz
 
-
+		  //compensate barometer
 		  BMP388_CompensateRawPressTemp(&bmp, raw_press, raw_temp, &press, &temp); //2.7 us
-		  //full loop time 2.94 ms, without time read 2.48 ms
-//		  hz = BMP388_FindAltitude(ground_pressure, press)-h0;
 		  hz = BMP388_FindAltitude(ground_pressure, press-p0);
 
 
-		  //filterUpdateIMU(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], &q);
-		  //filterUpdate((imu.gyr_rps[0]-gyro_offset_x), (imu.gyr_rps[1]-gyro_offset_y), imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], (imu.gyr_rps[2]-gyro_offset_z), mag_data_y, -mag_data_x, mag_data_z, &q, &f, &w);
-
-
-		  //eulerAngles(q, &roll, &pitch, &yaw);
-
+		  // compensate gyro data with offset
 		  gyro_x_degree = ((imu.gyr_rps[0]-gyro_offset_x)*57.29);
 		  gyro_y_degree = ((imu.gyr_rps[1]-gyro_offset_x)*57.29);
 		  gyro_z_degree = ((imu.gyr_rps[2]-gyro_offset_x)*57.29);
 
 
-//		  magneto_data = FusionVectorSubtract(magneto_data, magneto_offset);
+		  // compensate magneto data
 		  magneto_data = FusionMatrixMultiplyVector(magneto_transform, FusionVectorSubtract(magneto_data, magneto_offset));
 
 		  const FusionVector gyroscope = {gyro_x_degree, gyro_y_degree, gyro_z_degree};
@@ -1797,12 +1730,15 @@ void Start_Data_Reading(void const * argument)
 		  FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, SAMPLE_PERIOD);
 
 		  euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+
 		  // Rotation matrix from sensor frame to earth(NWU) frame
 		  ERS = FusionQuaternionToMatrix(FusionAhrsGetQuaternion(&ahrs));
 		  aE = FusionMatrixMultiplyVector(ERS, FusionVectorMultiplyScalar(accelerometer, 9.81));
+		  // calculate vertical acceleration
 		  aE.axis.z -=9.85173;
 
 
+		  // altitude KF filter
 		  meas.a11 = hz;
 		  meas.a21 = aE.axis.z;
 		  altitudeKF(prev_state, &current_state, P_prev, &P, meas);
@@ -1819,15 +1755,6 @@ void Start_Data_Reading(void const * argument)
 		  abs_yaw = yaw_angle;
 		  prev_euler_yaw = euler.angle.yaw;
 
-
-		  //python
-//		  sprintf((char*)transmit_data, "Uni:0,0,0,0,0,0,%5.2f,%5.2f,%5.2f\r\n", mag_data_y, (-mag_data_x), mag_data_z); //%5.2f
-//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 100);
-//		  HAL_Delay(1);
-
-		  //motioncal
-//		  sprintf((char*)transmit_data, "Raw:0,0,0,0,0,0,%d,%d,%d\r\n", (int)(magnetometer.axis.x*10), (int)((magnetometer.axis.y)*10), (int)(magnetometer.axis.z)*10); //%5.2f
-//		  HAL_UART_Transmit (&huart2, transmit_data, sizeof (transmit_data), 500);
 
 
 
@@ -1855,7 +1782,7 @@ void Start_Data_Reading(void const * argument)
 		  errd_angle_roll = (err_angle_roll - prev_err_angle_roll)/SAMPLE_PERIOD;
 		  angle_control_roll = P_angle_roll * err_angle_roll + D_angle_roll * errd_angle_roll;
 		  prev_err_angle_roll = err_angle_roll;
-		  debug_control1 = err_angle_roll;
+		  //debug_control1 = err_angle_roll;
 
 
 		  //roll angle velocity control
@@ -1863,7 +1790,7 @@ void Start_Data_Reading(void const * argument)
 		  errd_roll = (err_roll - prev_err_roll)/SAMPLE_PERIOD;
 		  prev_err_roll = err_roll;
 		  control_roll = P_roll * err_roll + D_roll * errd_roll;
-		  debug_control2 = control_roll;
+		  //debug_control2 = control_roll;
 
 
 		  //yaw angle control
@@ -1882,7 +1809,7 @@ void Start_Data_Reading(void const * argument)
 
 
 
-		  if(RX_arm > 1000){
+		  if(RX_arm > 1000){ // arming turn on
 			  uart_telemetria = 0;
 			  //pitch
 //			  ref1 = (uint16_t)(M_throttle - control_pitch);
@@ -1908,23 +1835,33 @@ void Start_Data_Reading(void const * argument)
 			  ref3 = (uint16_t)(M_throttle - control_yaw + control_pitch - control_roll);
 			  ref4 = (uint16_t)(M_throttle + control_yaw + control_pitch + control_roll);
 
+
+
 //			  ref1 = (uint16_t)(M_throttle - control_pitch + control_roll);
 //			  ref2 = (uint16_t)(M_throttle - control_pitch - control_roll);
 //			  ref3 = (uint16_t)(M_throttle + control_pitch - control_roll);
 //			  ref4 = (uint16_t)(M_throttle + control_pitch + control_roll);
 
+			  // ESC calibration
 //			  ref1 = (uint16_t)(M_throttle);
 //			  ref2 = (uint16_t)(M_throttle);
 //			  ref3 = (uint16_t)(M_throttle);
 //			  ref4 = (uint16_t)(M_throttle);
 
+			  // minimum limit for motor refs
 			  if(ref1<550) ref1 = 550;
 			  if(ref2<550) ref2 = 550;
 			  if(ref3<550) ref3 = 550;
 			  if(ref4<550) ref4 = 550;
 
+			  // maximum limit for motor refs
+			  if(ref1>950) ref1 = 950;
+			  if(ref2>950) ref2 = 950;
+			  if(ref3>950) ref3 = 950;
+			  if(ref4>950) ref4 = 950;
+
 		  }
-		  else{
+		  else{ //arming turn off
 			  uart_telemetria = 1;
 			  if(new_P == 1){
 				  P_yaw = telem_P;
@@ -1941,56 +1878,17 @@ void Start_Data_Reading(void const * argument)
 		  }
 
 		  //telemetria
-//		  telemetria_float[0] = (float)mag_data.x;
-//		  telemetria_float[1] = (float)mag_data.y;
-//		  telemetria_float[2] = (float)mag_data.z;
-
-//		  telemetria_float[0] = magneto_data.axis.x;
-//		  telemetria_float[1] = magneto_data.axis.y;
-//		  telemetria_float[2] = magneto_data.axis.z;
-
 		  telemetria_float[0] = hz;
-		  telemetria_float[1] = current_state.a11;
-		  telemetria_float[2] = p0;//mytimer;//euler.angle.yaw;
+		  telemetria_float[1] = h0;
+		  telemetria_float[2] = p0;
 		  xQueueSendToFront(telemetria_Queue, (void*)&telemetria_float, 0);
 
 
-
-//		  set_duty_Oneshot42(&htim3, 550, 550, 550, 550);
 		  set_duty_Oneshot42(&htim3, ref1, ref2, ref3, ref4);
 		  mytimer = __HAL_TIM_GET_COUNTER(&htim7);
 	osDelay(4);
-//	osDelay(48);
   }
-  /* USER CODE END Start_Data_Reading */
-}
-
-/* USER CODE BEGIN Header_Start_Orientation */
-/**
-* @brief Function implementing the Orientation_cal thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_Start_Orientation */
-void Start_Orientation(void const * argument)
-{
-  /* USER CODE BEGIN Start_Orientation */
-//	q.SEq_1=1;
-//	q.SEq_2=0;
-//	q.SEq_3=0;
-//	q.SEq_4=0;
-  /* Infinite loop */
-  for(;;)
-  {
-//	  if(oricalc == 1){
-//		//filterUpdateIMU(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], &q );
-//		filterUpdate(imu.gyr_rps[0], imu.gyr_rps[1], imu.gyr_rps[2], imu.acc_mps2[0], imu.acc_mps2[1], imu.acc_mps2[2], mag_data_y, -mag_data_x, mag_data_z, &q, &f);
-//		eulerAngles(q, &roll, &pitch, &yaw);
-//		oricalc = 0;
-//	  }
-    osDelay(1);
-  }
-  /* USER CODE END Start_Orientation */
+  /* USER CODE END Start_Control */
 }
 
 /**
